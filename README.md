@@ -1,74 +1,52 @@
 # Fast Dashboard
 
-Aplicación Kanban local para gestionar tareas, tableros y criterios de aceptación. El frontend usa React, TypeScript, Vite, Tailwind y Zustand; el backend es una API HTTP Node.js con persistencia JSON.
+Local Kanban application for managing tasks, boards, and acceptance criteria. The frontend uses React, TypeScript, Vite, Tailwind, and Zustand; the backend is a Node.js HTTP API with JSON persistence.
 
-## Requisitos
+## Requirements
 
-- Node.js 20+ y npm
-- Docker 20+ (opcional)
+- Node.js 20+ and npm
+- Docker 20+ (optional)
 
-## Desarrollo
+## Development
 
 ```bash
 npm ci
 npm run dev
 ```
 
-Vite sirve el frontend en `http://localhost:5173` y redirige `/api` al servidor local. Para ejecutar la compilación de producción:
-
-```bash
-npm start
-# http://localhost:3000
-```
+Vite serves the frontend at `http://localhost:5173` and proxies `/api` to the local server. For a production build and local server, run `npm start`; the server is available at `http://localhost:3000`.
 
 ## Scripts
 
-| Comando | Propósito |
+| Command | Purpose |
 |---|---|
-| `npm run dev` | Desarrollo con Vite |
-| `npm run build` | Type-check y build en `dist/` |
-| `npm test` | Tests integrados del servidor |
-| `npm run coverage` | Reporte textual y HTML en `coverage/` |
-| `npm run coverage:check` | Cobertura con umbral 100% configurado |
-| `npm start` | Compila y ejecuta el servidor en el puerto 3000 |
+| `npm run dev` | Start Vite development mode |
+| `npm run build` | Type-check and build into `dist/` |
+| `npm test` | Run integrated server tests |
+| `npm run coverage` | Generate text and HTML coverage in `coverage/` |
+| `npm run coverage:check` | Run coverage with the configured threshold |
+| `npm start` | Build and start the server on port 3000 |
 
-## Arquitectura
+## Architecture
 
-- `src/App.tsx`: interfaz Kanban, diálogos y formato de criterios.
-- `src/store.ts`: estado Zustand, normalización y `localStorage`.
-- `src/config.ts` y `src/types.ts`: configuración y tipos.
-- `server.js`: API HTTP, archivos compilados y persistencia JSON.
-- `data/tasks.json` y `data/boards.json`: almacenamiento local.
-- `test/server.test.js`: pruebas de API y entrega del dashboard.
+- `src/App.tsx`: Kanban interface, dialogs, and criterion formatting.
+- `src/store.ts`: Zustand state, normalization, and `localStorage` persistence.
+- `src/config.ts` and `src/types.ts`: configuration and types.
+- `server.js`: HTTP API, compiled files, and JSON persistence.
+- `data/tasks.json` and `data/boards.json`: local server storage and seed data.
+- `test/server.test.js`: API and dashboard delivery tests.
 
-El frontend guarda cambios locales en `localStorage`; el servidor guarda cambios de API en `data/`. En despliegues reales monta un volumen para conservar esos archivos.
+The frontend stores local changes in `localStorage`; the server stores API changes in `data/`. Mount a volume for those files in deployments. Text entered or edited by users is intentionally not translated or modified.
 
 ## API
 
-Todas las respuestas son JSON.
+All responses are JSON. Routes include `GET /api/tasks`, `POST /api/tasks`, `PATCH` and `DELETE /api/tasks/:id`, `PATCH /api/tasks/:id/status`, acceptance-criteria CRUD routes, and board CRUD routes under `/api/boards`.
 
-| Método | Ruta | Descripción |
-|---|---|---|
-| GET | `/api/tasks` | Lista tareas y normaliza criterios |
-| POST | `/api/tasks` | Crea una tarea |
-| PATCH/DELETE | `/api/tasks/:id` | Actualiza o elimina una tarea |
-| PATCH | `/api/tasks/:id/status` | Cambia el estado |
-| GET/POST | `/api/tasks/:id/acceptance-criteria` | Lista o añade criterios |
-| PATCH/DELETE | `/api/tasks/:id/acceptance-criteria/:criterionId` | Modifica o elimina criterios |
-| GET/POST | `/api/boards` | Lista o crea tableros |
-| PATCH/DELETE | `/api/boards/:id` | Modifica o elimina tableros |
+Built-in statuses are `backlog`, `todo`, `in_progress`, `done`, and `hold`. User-created boards can also become valid statuses.
 
-```bash
-curl http://localhost:3000/api/tasks
-curl -X PATCH http://localhost:3000/api/tasks/task-001/status \
-  -H 'content-type: application/json' -d '{"status":"done"}'
-```
+## Criterion formatting
 
-Estados integrados: `backlog`, `todo`, `in_progress`, `done` y `hold`. Los tableros creados también pueden ser estados válidos.
-
-## Formato de criterios
-
-El editor conserva la selección actual y permite aplicar `**texto**` (negrita), `__texto__` (subrayado) y `__{#rrggbb}texto__` (color del subrayado). El formato solo afecta el texto seleccionado y se escapa antes de renderizarse.
+The editor preserves the current selection and supports `**text**` (bold), `__text__` (underline), and `__{#rrggbb}text__` (underline color). Formatting applies only to selected text and is escaped before rendering.
 
 ## Docker
 
@@ -77,19 +55,15 @@ docker build -t fast-dashboard .
 docker run --rm -p 3000:3000 fast-dashboard
 ```
 
-La imagen compila en una etapa de build, ejecuta Node Alpine y contiene un `HEALTHCHECK` contra `/healthz`. Para persistir datos:
+The image includes a `HEALTHCHECK` for `/healthz`. To persist data, mount `"$PWD/data:/app/data"`.
 
-```bash
-docker run --rm -p 3000:3000 -v "$PWD/data:/app/data" fast-dashboard
-```
+## CI, tests, and coverage
 
-## CI, tests y coverage
+`.github/workflows/ci.yml` runs on every push and pull request: `npm ci`, coverage tests, the TypeScript/Vite build, a Docker build, and an HTTP smoke test against `/healthz`. The current suite is below the configured coverage threshold, so CI currently runs reporting without blocking deliveries. The React UI needs a future browser test suite for interaction coverage.
 
-`.github/workflows/ci.yml` ejecuta en cada push y pull request: `npm ci`, tests con reporte de coverage, build TypeScript/Vite, build Docker y smoke test HTTP contra `/healthz`. `coverage:check` está preparado para exigir 100% de líneas, funciones, ramas y statements del alcance instrumentado (`server.js`), pero la suite actual todavía reporta 59.52% de statements, 52.83% de ramas, 72.72% de funciones y 59.52% de líneas; por eso CI usa temporalmente `coverage` y no bloquea entregas. La UI React requiere una futura suite de navegador (por ejemplo Playwright) para cobertura de interacción.
+## Operations and security
 
-## Operación y seguridad
-
-- No hay secretos ni credenciales en el repositorio.
-- Usa `npm ci` en CI y Docker.
-- Los cuerpos JSON están limitados a 1 MiB.
-- La API no tiene autenticación ni multiusuario: protégela detrás de una red privada o gateway autenticado antes de exponerla públicamente.
+- No secrets or credentials are committed.
+- Use `npm ci` in CI and Docker.
+- JSON request bodies are limited to 1 MiB.
+- The API has no authentication or multi-user support; protect it behind a private network or authenticated gateway before public exposure.

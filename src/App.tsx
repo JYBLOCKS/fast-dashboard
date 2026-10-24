@@ -248,7 +248,7 @@ export default function App() {
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-|-$/g, "") || `board-${Date.now()}`;
     if (boards.some((board) => board.value === value)) {
-      alert("Ya existe un tablero con ese nombre");
+      alert("A board with that name already exists");
       return;
     }
     saveBoards([
@@ -259,7 +259,7 @@ export default function App() {
   };
   const deleteBoard = async (board: Board) => {
     if (boards.length <= 1) {
-      alert("Debe existir al menos un tablero");
+      alert("At least one board must exist");
       return;
     }
     const target = boards.find((item) => item.value !== board.value)!;
@@ -341,7 +341,7 @@ export default function App() {
       <header className="mb-6 flex flex-wrap items-start justify-between gap-3 sm:items-end">
         <div className="min-w-0">
           <p className="mb-1 text-xs font-bold uppercase tracking-[.12em] text-blue-300">
-            Workspace / Operaciones
+            Workspace / Operations
           </p>
           <h1 className="break-words text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">
             {config.appName}
@@ -349,8 +349,8 @@ export default function App() {
         </div>
         <button
           className="icon shrink-0"
-          aria-label="Actualizar"
-          title="Actualizar"
+          aria-label="Refresh"
+          title="Refresh"
           disabled={loading}
           onClick={() => void load()}
         >
@@ -367,7 +367,7 @@ export default function App() {
       )}
       {loading ? (
         <div className="min-h-0 flex-1 rounded-xl border border-slate-700 bg-slate-950/60 p-5 text-sm text-slate-400">
-          Cargando tareas…
+          Loading tasks…
         </div>
       ) : (
         <section
@@ -402,8 +402,8 @@ export default function App() {
                   <div className="board-header-actions ml-auto flex shrink-0 items-center gap-0">
                     <button
                       className="icon"
-                      aria-label={"Agregar en " + col.label}
-                      title={"Agregar en " + col.label}
+                      aria-label={"Add to " + col.label}
+                      title={"Add to " + col.label}
                       onClick={(event) =>
                         open(undefined, col.value, event.currentTarget)
                       }
@@ -414,7 +414,7 @@ export default function App() {
                     <button
                       className="icon"
                       aria-label={`Opciones de ${col.label}`}
-                      title="Opciones del tablero"
+                      title="Board options"
                       aria-haspopup="menu"
                       aria-expanded={boardMenu === col.value}
                       onClick={(event) => {
@@ -440,7 +440,7 @@ export default function App() {
                           }}
                         >
                           <Edit3 size={15} />
-                          Modificar
+                          Edit
                         </button>
                         <button
                           role="menuitem"
@@ -451,7 +451,7 @@ export default function App() {
                           }}
                         >
                           <Trash2 size={15} />
-                          Eliminar
+                          Delete
                         </button>
                       </div>
                     )}
@@ -498,8 +498,8 @@ export default function App() {
           })}
           <button
             className="icon add-board-button shrink-0 self-start"
-            aria-label="Agregar tablero"
-            title="Agregar tablero"
+            aria-label="Add board"
+            title="Add board"
             onClick={() => openBoardDialog()}
           >
             <Plus size={22} />
@@ -510,9 +510,9 @@ export default function App() {
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setBoardToDelete(null); }}>
           <div role="dialog" aria-modal="true" aria-labelledby="board-delete-title" className="w-[min(28rem,calc(100vw-2rem))] rounded-xl border border-slate-600 bg-slate-900 p-5 shadow-2xl">
             <div className="grid gap-4">
-              <h2 id="board-delete-title" className="text-lg font-bold">Eliminar tablero</h2>
-              <p className="text-slate-300">¿Seguro que deseas eliminar “{boardToDelete.label}”? Las tareas se moverán al primer tablero disponible.</p>
-              <div className="flex justify-end gap-2"><button type="button" className="rounded border border-slate-600 px-4 py-2 text-slate-200 hover:bg-slate-800" onClick={() => setBoardToDelete(null)}>Cancelar</button><button type="button" className="rounded bg-red-600 px-4 py-2 font-medium text-white hover:bg-red-500" onClick={() => void deleteBoard(boardToDelete)}>Eliminar</button></div>
+              <h2 id="board-delete-title" className="text-lg font-bold">Delete board</h2>
+              <p className="text-slate-300">Are you sure you want to delete “{boardToDelete.label}”? Tasks will move to the first available board.</p>
+              <div className="flex justify-end gap-2"><button type="button" className="rounded border border-slate-600 px-4 py-2 text-slate-200 hover:bg-slate-800" onClick={() => setBoardToDelete(null)}>Cancel</button><button type="button" className="rounded bg-red-600 px-4 py-2 font-medium text-white hover:bg-red-500" onClick={() => void deleteBoard(boardToDelete)}>Delete</button></div>
             </div>
           </div>
         </div>
@@ -521,9 +521,9 @@ export default function App() {
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setTaskToDelete(null); }}>
           <div role="dialog" aria-modal="true" aria-labelledby="task-delete-title" className="w-[min(28rem,calc(100vw-2rem))] rounded-xl border border-slate-600 bg-slate-900 p-5 shadow-2xl">
             <div className="grid gap-4">
-              <h2 id="task-delete-title" className="text-lg font-bold">Eliminar tarea</h2>
-              <p className="text-slate-300">¿Seguro que deseas eliminar “{taskToDelete.name}”?</p>
-              <div className="flex justify-end gap-2"><button type="button" className="rounded border border-slate-600 px-4 py-2 text-slate-200 hover:bg-slate-800" onClick={() => setTaskToDelete(null)}>Cancelar</button><button type="button" className="rounded bg-red-600 px-4 py-2 font-medium text-white hover:bg-red-500" onClick={async () => { await remove(taskToDelete.task_id); setTaskToDelete(null); close(); }}>Eliminar</button></div>
+              <h2 id="task-delete-title" className="text-lg font-bold">Delete task</h2>
+              <p className="text-slate-300">Are you sure you want to delete “{taskToDelete.name}”?</p>
+              <div className="flex justify-end gap-2"><button type="button" className="rounded border border-slate-600 px-4 py-2 text-slate-200 hover:bg-slate-800" onClick={() => setTaskToDelete(null)}>Cancel</button><button type="button" className="rounded bg-red-600 px-4 py-2 font-medium text-white hover:bg-red-500" onClick={async () => { await remove(taskToDelete.task_id); setTaskToDelete(null); close(); }}>Delete</button></div>
             </div>
           </div>
         </div>
@@ -533,23 +533,23 @@ export default function App() {
           <div role="dialog" aria-modal="true" aria-labelledby="board-popup-title" className="w-[min(28rem,calc(100vw-2rem))] rounded-xl border border-slate-600 bg-slate-900 p-5 shadow-2xl">
             <form onSubmit={saveBoard} className="grid gap-4">
               <div className="flex items-center justify-between gap-3">
-                <h2 id="board-popup-title" className="text-lg font-bold">{boardDialog.mode === "create" ? "Crear tablero" : "Modificar tablero"}</h2>
-                <button type="button" className="icon" aria-label="Cerrar" title="Cerrar" onClick={() => setBoardDialog(null)}><X size={18} /></button>
+                <h2 id="board-popup-title" className="text-lg font-bold">{boardDialog.mode === "create" ? "Create board" : "Edit board"}</h2>
+                <button type="button" className="icon" aria-label="Close" title="Close" onClick={() => setBoardDialog(null)}><X size={18} /></button>
               </div>
               <label className="grid gap-1 text-sm text-slate-300">
-                Nombre del tablero
+                Board name
                 <input autoFocus required value={boardDialog.label} onChange={(event) => setBoardDialog({ ...boardDialog, label: event.target.value })} className="w-full rounded border border-slate-700 bg-slate-950 p-2" />
               </label>
               <div className="flex items-center justify-between gap-3 text-sm text-slate-300">
-                Color de acento
+                Accent color
                 <span className="flex items-center gap-2">
                   <input type="color" aria-label="Color de acento" value={boardDialog.accent} onChange={(event) => setBoardDialog({ ...boardDialog, accent: event.target.value })} onMouseDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()} className="h-9 w-14 cursor-pointer rounded border border-slate-700 bg-slate-950 p-1" />
                   <code className="text-xs text-slate-400">{boardDialog.accent}</code>
                 </span>
               </div>
               <div className="flex justify-end gap-2">
-                <button type="button" className="rounded border border-slate-600 px-4 py-2 text-slate-200 hover:bg-slate-800" onClick={() => setBoardDialog(null)}>Cancelar</button>
-                <button type="submit" className="rounded bg-green-600 px-4 py-2 font-medium text-white hover:bg-green-500">Guardar</button>
+                <button type="button" className="rounded border border-slate-600 px-4 py-2 text-slate-200 hover:bg-slate-800" onClick={() => setBoardDialog(null)}>Cancel</button>
+                <button type="submit" className="rounded bg-green-600 px-4 py-2 font-medium text-white hover:bg-green-500">Save</button>
               </div>
             </form>
           </div>
@@ -560,40 +560,40 @@ export default function App() {
           <div role="dialog" aria-modal="true" aria-labelledby="task-create-title" className="max-h-[calc(100dvh-2rem)] w-[min(36rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-slate-600 bg-slate-900 p-5 shadow-2xl">
             <form onSubmit={save} className="grid gap-4">
               <div className="flex items-center justify-between gap-3">
-                <h2 id="task-create-title" className="text-lg font-bold">Agregar tarea</h2>
-                <button type="button" className="icon" aria-label="Cerrar" title="Cerrar" onClick={close}><X size={18} /></button>
+                <h2 id="task-create-title" className="text-lg font-bold">Add task</h2>
+                <button type="button" className="icon" aria-label="Close" title="Close" onClick={close}><X size={18} /></button>
               </div>
               <label className="grid gap-1 text-sm text-slate-300">
-                ID de la tarea
-                <div className="flex items-center gap-2 rounded border border-slate-700 bg-slate-950 p-2 text-slate-300"><span className="font-mono">{form.task_id}</span><span className="ml-auto text-xs text-slate-500">Generado automáticamente</span></div>
+                Task ID
+                <div className="flex items-center gap-2 rounded border border-slate-700 bg-slate-950 p-2 text-slate-300"><span className="font-mono">{form.task_id}</span><span className="ml-auto text-xs text-slate-500">Generated automatically</span></div>
               </label>
               <label className="grid gap-1 text-sm text-slate-300">
-                Nombre
+                Name
                 <input required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} className="w-full rounded border border-slate-700 bg-slate-950 p-2" />
               </label>
               <label className="grid gap-1 text-sm text-slate-300">
-                Descripción
+                Description
                 <textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} rows={4} className="w-full resize-y rounded border border-slate-700 bg-slate-950 p-2" />
               </label>
               <div className="grid gap-2 text-sm text-slate-300">
-                <span>Estado inicial</span>
+                <span>Initial status</span>
                 <div className="flex items-center gap-2 rounded border px-3 py-2" style={{ color: boards.find((board) => board.value === form.status)?.accent, borderColor: boards.find((board) => board.value === form.status)?.accent, backgroundColor: `${boards.find((board) => board.value === form.status)?.accent}18` }}>
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: boards.find((board) => board.value === form.status)?.accent }} />
                   <strong>{boards.find((board) => board.value === form.status)?.label ?? form.status}</strong>
-                  <span className="ml-auto text-xs text-slate-400">Se agregará aquí</span>
+                  <span className="ml-auto text-xs text-slate-400">Tasks will be added here</span>
                 </div>
               </div>
               <div className="grid gap-2 text-sm text-slate-300">
-                <div className="flex items-center justify-between"><span>Criterios de aceptación</span><button type="button" className="rounded border border-slate-600 px-2 py-1 text-xs hover:bg-slate-800" onClick={() => setCriterionDrafts([...criterionDrafts, { id: `criterion-${Date.now()}`, text: "Nuevo criterio", completed: false }])}><Plus size={13} className="mr-1 inline" />Agregar criterio</button></div>
-                <span className="text-xs text-slate-500">Cada criterio se agrega y edita por separado.</span>
+                <div className="flex items-center justify-between"><span>Acceptance criteria</span><button type="button" className="rounded border border-slate-600 px-2 py-1 text-xs hover:bg-slate-800" onClick={() => setCriterionDrafts([...criterionDrafts, { id: `criterion-${Date.now()}`, text: "New criterion", completed: false }])}><Plus size={13} className="mr-1 inline" />Add criterion</button></div>
+                <span className="text-xs text-slate-500">Each criterion can be added and edited separately.</span>
                 <div className="grid gap-2">
-                  {criterionDrafts.map((criterion, index) => <div key={criterion.id} className="flex items-center gap-2"><span className="w-5 text-center text-xs text-slate-500">{index + 1}</span><span className="min-w-0 flex-1 truncate" dangerouslySetInnerHTML={{ __html: renderCriterionText(criterion.text) }} /><button type="button" className="icon" aria-label={`Más opciones para: ${criterion.text}`} aria-expanded={criterionMenu === criterion.id} onMouseDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); const rect = event.currentTarget.getBoundingClientRect(); setCriterionAnchor({ top: rect.bottom + 4, left: Math.max(8, rect.right - 160) }); setCriterionMenu(criterionMenu === criterion.id ? null : criterion.id); }}><MoreVertical size={18} /></button>{criterionMenu === criterion.id && createPortal(<div ref={criterionPortalRef} role="menu" className="fixed z-[100] grid min-w-40 gap-1 rounded-lg border border-slate-700 bg-slate-900 p-1 shadow-xl" style={criterionAnchor} onMouseDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}><button role="menuitem" className="flex items-center gap-2 rounded px-3 py-2 text-left text-sm text-blue-300 hover:bg-slate-800" onClick={() => { setCriterionMenu(null); setCriterionViewing(criterion); }}><Eye size={15} />Ver</button><button role="menuitem" className="flex items-center gap-2 rounded px-3 py-2 text-left text-sm text-yellow-300 hover:bg-slate-800" onClick={() => { setCriterionMenu(null); editCriterion(criterion); }}><Edit3 size={15} />Editar</button><button role="menuitem" className="flex items-center gap-2 rounded px-3 py-2 text-left text-sm text-red-300 hover:bg-slate-800" onClick={() => { setCriterionMenu(null); deleteCriterion(criterion); }}><Trash2 size={15} />Eliminar</button></div>, document.body)}</div>)}
-                  {!criterionDrafts.length && <p className="rounded border border-dashed border-slate-700 p-3 text-center text-xs text-slate-500">Aún no hay criterios.</p>}
+                  {criterionDrafts.map((criterion, index) => <div key={criterion.id} className="flex items-center gap-2"><span className="w-5 text-center text-xs text-slate-500">{index + 1}</span><span className="min-w-0 flex-1 truncate" dangerouslySetInnerHTML={{ __html: renderCriterionText(criterion.text) }} /><button type="button" className="icon" aria-label={`More options for: ${criterion.text}`} aria-expanded={criterionMenu === criterion.id} onMouseDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); const rect = event.currentTarget.getBoundingClientRect(); setCriterionAnchor({ top: rect.bottom + 4, left: Math.max(8, rect.right - 160) }); setCriterionMenu(criterionMenu === criterion.id ? null : criterion.id); }}><MoreVertical size={18} /></button>{criterionMenu === criterion.id && createPortal(<div ref={criterionPortalRef} role="menu" className="fixed z-[100] grid min-w-40 gap-1 rounded-lg border border-slate-700 bg-slate-900 p-1 shadow-xl" style={criterionAnchor} onMouseDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}><button role="menuitem" className="flex items-center gap-2 rounded px-3 py-2 text-left text-sm text-blue-300 hover:bg-slate-800" onClick={() => { setCriterionMenu(null); setCriterionViewing(criterion); }}><Eye size={15} />View</button><button role="menuitem" className="flex items-center gap-2 rounded px-3 py-2 text-left text-sm text-yellow-300 hover:bg-slate-800" onClick={() => { setCriterionMenu(null); editCriterion(criterion); }}><Edit3 size={15} />Edit</button><button role="menuitem" className="flex items-center gap-2 rounded px-3 py-2 text-left text-sm text-red-300 hover:bg-slate-800" onClick={() => { setCriterionMenu(null); deleteCriterion(criterion); }}><Trash2 size={15} />Delete</button></div>, document.body)}</div>)}
+                  {!criterionDrafts.length && <p className="rounded border border-dashed border-slate-700 p-3 text-center text-xs text-slate-500">No criteria yet.</p>}
                 </div>
               </div>
               <div className="flex justify-end gap-2">
-                <button type="button" className="rounded border border-slate-600 px-4 py-2 text-slate-200 hover:bg-slate-800" onClick={close}>Cancelar</button>
-                <button type="submit" className="rounded bg-green-600 px-4 py-2 font-medium text-white hover:bg-green-500">Agregar tarea</button>
+                <button type="button" className="rounded border border-slate-600 px-4 py-2 text-slate-200 hover:bg-slate-800" onClick={close}>Cancel</button>
+                <button type="submit" className="rounded bg-green-600 px-4 py-2 font-medium text-white hover:bg-green-500">Add task</button>
               </div>
             </form>
           </div>
@@ -605,7 +605,7 @@ export default function App() {
           <aside
             role="dialog"
             aria-modal="true"
-            aria-label={editing ? "Editar tarea" : "Detalle de tarea"}
+            aria-label={editing ? "Edit task" : "Task details"}
             className={taskDialog ? "contents" : "task-sidebar fixed right-0 top-0 z-20 h-[100dvh] max-w-full overflow-y-auto border-l border-slate-700 bg-slate-900 p-4 pt-[max(1rem,env(safe-area-inset-top))] shadow-2xl sm:p-5"}
             style={taskDialog ? undefined : { width: `min(${width}px,100vw)` }}
           >
@@ -613,8 +613,8 @@ export default function App() {
               ref={closeRef}
               className="sidebar-close icon"
               onClick={close}
-              aria-label="Cerrar"
-              title="Cerrar"
+              aria-label="Close"
+              title="Close"
             >
               <ChevronRight />
             </button>}
@@ -623,19 +623,19 @@ export default function App() {
                 <div role="dialog" aria-modal="true" aria-labelledby="criterion-popup-title" className="w-[min(28rem,calc(100vw-2rem))] rounded-xl border border-slate-600 bg-slate-900 p-5 shadow-2xl">
                   {criterionViewing ? (
                     <div className="grid gap-4">
-                      <div className="flex items-center justify-between gap-3"><h2 id="criterion-popup-title" className="text-lg font-bold">Ver criterio</h2><button type="button" className="icon" aria-label="Cerrar" onClick={() => setCriterionViewing(null)}><X size={18} /></button></div>
+                      <div className="flex items-center justify-between gap-3"><h2 id="criterion-popup-title" className="text-lg font-bold">View criterion</h2><button type="button" className="icon" aria-label="Close" onClick={() => setCriterionViewing(null)}><X size={18} /></button></div>
                       <div className="max-h-[60vh] overflow-y-auto whitespace-pre-wrap break-words text-slate-200" dangerouslySetInnerHTML={{ __html: renderCriterionText(criterionViewing.text) }} />
-                      <div className="flex justify-end"><button type="button" className="rounded border border-slate-600 px-4 py-2 text-slate-200 hover:bg-slate-800" onClick={() => setCriterionViewing(null)}>Cerrar</button></div>
+                      <div className="flex justify-end"><button type="button" className="rounded border border-slate-600 px-4 py-2 text-slate-200 hover:bg-slate-800" onClick={() => setCriterionViewing(null)}>Close</button></div>
                     </div>
                   ) : criterionEditing ? (
                     <form onSubmit={saveCriterion} className="grid gap-4">
-                      <div className="flex items-center justify-between gap-3"><h2 id="criterion-popup-title" className="text-lg font-bold">Editar criterio</h2><button type="button" className="icon" aria-label="Cerrar" onClick={() => setCriterionEditing(null)}><X size={18} /></button></div>
-                      <div className="flex items-center gap-1 rounded border border-slate-700 bg-slate-950 p-2" aria-label="Formato del texto"><button type="button" className="icon" aria-label="Aplicar negrita" title="Negrita" onMouseDown={(event) => event.preventDefault()} onClick={() => applyCriterionFormat("**", "**")}><Bold size={17} /></button><button type="button" className="icon" aria-label="Aplicar subrayado" title="Subrayado" onMouseDown={(event) => event.preventDefault()} onClick={() => applyCriterionFormat("__", "__")}><Underline size={17} /></button><input id="criterion-color" type="color" aria-label="Aplicar color" title="Color" value={criterionColor} onChange={(event) => { const color = event.target.value; setCriterionColor(color); applyCriterionColor(color); }} className="h-8 w-12 cursor-pointer rounded border border-slate-600 bg-slate-900 p-1" /></div>
-                      <textarea ref={criterionTextRef} autoFocus value={criterionDraft} onChange={(event) => setCriterionDraft(event.target.value)} aria-label="Texto del criterio" required rows={6} className="w-full resize-y rounded border border-slate-700 bg-slate-950 p-2" />
-                      <div className="flex justify-end gap-2"><button type="button" className="rounded border border-slate-600 px-4 py-2 text-slate-200 hover:bg-slate-800" onClick={() => setCriterionEditing(null)}>Cancelar</button><button type="submit" className="rounded bg-yellow-400 px-4 py-2 font-medium text-slate-950 hover:bg-yellow-300">Guardar</button></div>
+                      <div className="flex items-center justify-between gap-3"><h2 id="criterion-popup-title" className="text-lg font-bold">Edit criterion</h2><button type="button" className="icon" aria-label="Close" onClick={() => setCriterionEditing(null)}><X size={18} /></button></div>
+                      <div className="flex items-center gap-1 rounded border border-slate-700 bg-slate-950 p-2" aria-label="Text formatting"><button type="button" className="icon" aria-label="Apply bold" title="Bold" onMouseDown={(event) => event.preventDefault()} onClick={() => applyCriterionFormat("**", "**")}><Bold size={17} /></button><button type="button" className="icon" aria-label="Apply underline" title="Underline" onMouseDown={(event) => event.preventDefault()} onClick={() => applyCriterionFormat("__", "__")}><Underline size={17} /></button><input id="criterion-color" type="color" aria-label="Apply color" title="Color" value={criterionColor} onChange={(event) => { const color = event.target.value; setCriterionColor(color); applyCriterionColor(color); }} className="h-8 w-12 cursor-pointer rounded border border-slate-600 bg-slate-900 p-1" /></div>
+                      <textarea ref={criterionTextRef} autoFocus value={criterionDraft} onChange={(event) => setCriterionDraft(event.target.value)} aria-label="Criterion text" required rows={6} className="w-full resize-y rounded border border-slate-700 bg-slate-950 p-2" />
+                      <div className="flex justify-end gap-2"><button type="button" className="rounded border border-slate-600 px-4 py-2 text-slate-200 hover:bg-slate-800" onClick={() => setCriterionEditing(null)}>Cancel</button><button type="submit" className="rounded bg-yellow-400 px-4 py-2 font-medium text-slate-950 hover:bg-yellow-300">Save</button></div>
                     </form>
                   ) : (
-                    <div className="grid gap-4"><h2 id="criterion-popup-title" className="text-lg font-bold">Eliminar criterio</h2><p className="text-slate-300">¿Seguro que deseas eliminar “{criterionDeleting?.text}”?</p><div className="flex justify-end gap-2"><button type="button" className="rounded border border-slate-600 px-4 py-2 text-slate-200 hover:bg-slate-800" onClick={() => setCriterionDeleting(null)}>Cancelar</button><button type="button" className="rounded bg-red-600 px-4 py-2 font-medium text-white hover:bg-red-500" onClick={() => void confirmDeleteCriterion()}>Eliminar</button></div></div>
+                    <div className="grid gap-4"><h2 id="criterion-popup-title" className="text-lg font-bold">Delete criterion</h2><p className="text-slate-300">Are you sure you want to delete “{criterionDeleting?.text}”?</p><div className="flex justify-end gap-2"><button type="button" className="rounded border border-slate-600 px-4 py-2 text-slate-200 hover:bg-slate-800" onClick={() => setCriterionDeleting(null)}>Cancel</button><button type="button" className="rounded bg-red-600 px-4 py-2 font-medium text-white hover:bg-red-500" onClick={() => void confirmDeleteCriterion()}>Delete</button></div></div>
                   )}
                 </div>
               </div>
@@ -669,8 +669,8 @@ export default function App() {
                       type="button"
                       className="icon"
                       onClick={(event) => { event.stopPropagation(); const rect = event.currentTarget.getBoundingClientRect(); setActionsAnchor({ top: rect.bottom + 4, left: Math.max(8, rect.right - 160) }); setActionsOpen((value) => !value); }}
-                      aria-label="Menú"
-                      title="Acciones de la tarea"
+                      aria-label="Menu"
+                      title="Task actions"
                       aria-haspopup="menu"
                       aria-expanded={actionsOpen}
                     >
@@ -678,8 +678,8 @@ export default function App() {
                     </button>
                     {actionsOpen && createPortal(
                       <div role="menu" className="task-actions-menu fixed z-[100] grid min-w-40 gap-1 rounded-lg border border-slate-700 bg-slate-900 p-1 shadow-xl" style={actionsAnchor} onClick={(event) => event.stopPropagation()}>
-                        <button role="menuitem" className="flex items-center gap-2 rounded px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-800" onClick={() => open(selected, selected.status, triggerRef.current)}><Edit3 size={15} />Modificar</button>
-                        <button role="menuitem" className="flex items-center gap-2 rounded px-3 py-2 text-left text-sm text-red-300 hover:bg-slate-800" onClick={() => { setActionsOpen(false); setTaskToDelete(selected); }}><Trash2 size={15} />Eliminar</button>
+                        <button role="menuitem" className="flex items-center gap-2 rounded px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-800" onClick={() => open(selected, selected.status, triggerRef.current)}><Edit3 size={15} />Edit</button>
+                        <button role="menuitem" className="flex items-center gap-2 rounded px-3 py-2 text-left text-sm text-red-300 hover:bg-slate-800" onClick={() => { setActionsOpen(false); setTaskToDelete(selected); }}><Trash2 size={15} />Delete</button>
                       </div>, document.body,
                     )}
                   </div>
@@ -703,8 +703,8 @@ export default function App() {
             {editing && (
               <div className="task-edit-popup fixed left-1/2 top-1/2 z-30 max-h-[calc(100dvh-2rem)] w-[min(36rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-slate-600 bg-slate-900 p-4 shadow-2xl sm:p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
-                <h2 className="text-lg font-bold">Editar tarea</h2>
-                <button type="button" className="icon inline-grid place-items-center justify-center leading-none" aria-label="Cancelar edición" title="Cancelar edición" onClick={() => setEditing(null)}><X size={18} /></button>
+                <h2 className="text-lg font-bold">Edit task</h2>
+                <button type="button" className="icon inline-grid place-items-center justify-center leading-none" aria-label="Cancel editing" title="Cancel editing" onClick={() => setEditing(null)}><X size={18} /></button>
               </div>
               <form onSubmit={save} className="grid min-w-0 gap-4">
                 <label className="grid min-w-0 gap-1 text-sm text-slate-300">
@@ -721,7 +721,7 @@ export default function App() {
                   />
                 </label>
                 <label className="grid min-w-0 gap-1 text-sm text-slate-300">
-                  Nombre
+                  Name
                   <input
                     required
                     className="min-w-0 w-full rounded border border-slate-700 bg-slate-950 p-2"
@@ -730,7 +730,7 @@ export default function App() {
                   />
                 </label>
                 <label className="grid min-w-0 gap-1 text-sm text-slate-300">
-                  Descripción
+                  Description
                   <textarea
                     className="min-h-24 min-w-0 w-full rounded border border-slate-700 bg-slate-950 p-2"
                     value={form.description}
@@ -743,17 +743,17 @@ export default function App() {
                   <button
                     type="submit"
                     className="rounded bg-green-600 px-4 py-2 font-medium text-white hover:bg-green-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-300"
-                    aria-label="Aceptar"
+                    aria-label="Save"
                   >
-                    Aceptar
+                    Save
                   </button>
                   <button
                     type="button"
                     className="rounded border border-red-400 px-4 py-2 font-medium text-red-300 hover:bg-red-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-300"
-                    aria-label="Cancelar edición"
+                    aria-label="Cancel editing"
                     onClick={() => setEditing(null)}
                   >
-                    Cancelar
+                    Cancel
                   </button>
                 </div>
               </form>
@@ -778,7 +778,7 @@ export default function App() {
                       id="criteria-heading"
                       className="text-xs uppercase text-blue-300"
                     >
-                      Criterios de aceptación
+                      Acceptance criteria
                     </strong>
                     <span className="text-xs text-slate-400">
                       {criteria.filter((item) => item.completed).length}/
@@ -807,8 +807,8 @@ export default function App() {
                           <button
                             type="button"
                             className="icon self-center"
-                            aria-label={`Más opciones para: ${criterion.text}`}
-                            title="Más opciones"
+                            aria-label={`More options for: ${criterion.text}`}
+                            title="More options"
                             aria-haspopup="menu"
                             aria-expanded={criterionMenu === criterion.id}
                             aria-controls={`criterion-menu-${criterion.id}`}
@@ -827,15 +827,15 @@ export default function App() {
                               ref={criterionPortalRef}
                               role="menu"
                               id={`criterion-menu-${criterion.id}`}
-                              aria-label={`Acciones para: ${criterion.text}`}
+                              aria-label={`Actions for: ${criterion.text}`}
                               className="fixed z-[100] grid min-w-40 gap-1 rounded-lg border border-slate-700 bg-slate-900 p-1 shadow-xl"
                               style={criterionAnchor}
                               onMouseDown={(event) => event.stopPropagation()}
                               onClick={(event) => event.stopPropagation()}
                             >
-                              <button role="menuitem" className="flex items-center gap-2 rounded px-3 py-2 text-left text-sm text-blue-300 hover:bg-slate-800" onClick={() => { setCriterionMenu(null); setCriterionViewing(criterion); }}><Eye size={15} />Ver</button>
-                              <button role="menuitem" className="flex items-center gap-2 rounded px-3 py-2 text-left text-sm text-yellow-300 hover:bg-slate-800" onClick={() => { setCriterionMenu(null); editCriterion(criterion); }}><Edit3 size={15} />Editar</button>
-                              <button role="menuitem" className="flex items-center gap-2 rounded px-3 py-2 text-left text-sm text-red-300 hover:bg-slate-800" onClick={() => { setCriterionMenu(null); deleteCriterion(criterion); }}><Trash2 size={15} />Eliminar</button>
+                              <button role="menuitem" className="flex items-center gap-2 rounded px-3 py-2 text-left text-sm text-blue-300 hover:bg-slate-800" onClick={() => { setCriterionMenu(null); setCriterionViewing(criterion); }}><Eye size={15} />View</button>
+                              <button role="menuitem" className="flex items-center gap-2 rounded px-3 py-2 text-left text-sm text-yellow-300 hover:bg-slate-800" onClick={() => { setCriterionMenu(null); editCriterion(criterion); }}><Edit3 size={15} />Edit</button>
+                              <button role="menuitem" className="flex items-center gap-2 rounded px-3 py-2 text-left text-sm text-red-300 hover:bg-slate-800" onClick={() => { setCriterionMenu(null); deleteCriterion(criterion); }}><Trash2 size={15} />Delete</button>
                             </div>, document.body,
                           )}
                         </div>
@@ -855,14 +855,14 @@ export default function App() {
                   >
                     <input
                       name="criterion"
-                      aria-label="Nuevo criterio de aceptación"
-                      placeholder="Agregar criterio…"
+                      aria-label="New acceptance criterion"
+                      placeholder="Add criterion…"
                       className="min-w-0 flex-1 rounded border border-slate-700 bg-slate-950 p-2 text-sm"
                     />
                     <button
                       className="icon shrink-0"
-                      aria-label="Agregar criterio"
-                      title="Agregar criterio"
+                      aria-label="Add criterion"
+                      title="Add criterion"
                     >
                       <Plus size={18} />
                     </button>
