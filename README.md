@@ -4,25 +4,31 @@ Local Kanban application for managing tasks, boards, and acceptance criteria. Th
 
 ## Requirements
 
-- Node.js 20+ and npm
+- Node.js 20+ and pnpm 12+
 
 ## Development
 
 ```bash
-npm ci
-npm run dev
+pnpm install
+pnpm dev
 ```
 
-Vite serves the frontend at `http://localhost:5173`. Run `npm run build` to create a production bundle, then `npm start` to preview it locally.
+Vite serves the frontend at `http://localhost:5173`. Run `pnpm build` to create a production bundle, then `pnpm start` to preview it locally.
+
+If Vite reports that a Rolldown native binding is missing after changing Node versions or package managers, rebuild the optional platform dependency:
+
+```bash
+pnpm install --force
+```
 
 ## Scripts
 
 | Command | Purpose |
 |---|---|
-| `npm run dev` | Start Vite development mode |
-| `npm run build` | Type-check and build into `dist/` |
-| `npm test` | Type-check and build the application |
-| `npm start` | Preview the production build |
+| `pnpm dev` | Start Vite development mode |
+| `pnpm build` | Type-check and build into `dist/` |
+| `pnpm test` | Type-check and build the application |
+| `pnpm start` | Preview the production build |
 
 ## Architecture
 
