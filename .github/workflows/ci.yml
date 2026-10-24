@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run coverage
+      - run: npm run build
+      - run: docker build -t fast-dashboard:${{ github.sha }} .
+      - run: docker run -d --rm --name fast-dashboard-ci -p 3000:3000 fast-dashboard:${{ github.sha }}
+      - run: node -e "fetch('http://127.0.0.1:3000/healthz').then(async r=>{if(!r.ok|| (await r.json()).status !== 'ok') process.exit(1)}).catch(()=>process.exit(1))"
+      - if: always()
+        run: docker logs fast-dashboard-ci || true
+      - if: always()
+        run: docker stop fast-dashboard-ci || true

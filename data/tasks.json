@@ -1,0 +1,30 @@
+[
+  {
+    "task_id": "task-001",
+    "name": "Definir alcance del dashboard",
+    "description": "Acordar los estados, campos y comportamiento principal del tablero.",
+    "acceptance_criteria": "El tablero incluye Backlog, TO-DO, In Progress, Done y Hold.",
+    "status": "done"
+  },
+  {
+    "task_id": "task-002",
+    "name": "Implementar API de tareas",
+    "description": "Crear endpoints para consultar tareas y actualizar su estado.",
+    "acceptance_criteria": "El cambio de estado se persiste en data/tasks.json usando task_id.",
+    "status": "in_progress"
+  },
+  {
+    "task_id": "task-003",
+    "name": "Conectar el tablero",
+    "description": "Cargar las tareas desde la API y permitir drag and drop.",
+    "acceptance_criteria": "Al soltar una tarjeta en otra columna, su estado se actualiza y persiste.",
+    "status": "todo"
+  },
+  {
+    "task_id": "task-004",
+    "name": "Recopilar feedback",
+    "description": "Validar el tablero con usuarios y registrar mejoras.",
+    "acceptance_criteria": "Las observaciones quedan documentadas como nuevas tareas.",
+    "status": "backlog"
+  }
+]

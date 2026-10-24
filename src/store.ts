@@ -1,0 +1,11 @@
+import {create} from 'zustand';
+import type {AcceptanceCriterion,Task} from './types';
+import type {TaskStatus} from './config';
+import {config} from './config';
+import seedTasks from '../data/tasks.json';
+type State={tasks:Task[];loading:boolean;notice:string;error:string;load:()=>Promise<void>;create:(task:Task)=>Promise<void>;update:(id:string,patch:Partial<Task>)=>Promise<void>;remove:(id:string)=>Promise<void>;move:(id:string,status:string)=>Promise<void>};
+export const normalizeCriteria=(value:Task['acceptance_criteria']):AcceptanceCriterion[]=>{const values=Array.isArray(value)?value:[value];return values.flatMap((item,index)=>{if(typeof item==='string'){const text=item.trim();return text?[{id:`criterion-${index+1}`,text,completed:false}]:[]} ;return item&&item.text?.trim()?[{id:item.id||`criterion-${index+1}`,text:item.text.trim(),completed:Boolean(item.completed)}]:[]})};
+const normalizeTask=(task:Task):Task=>({...task,acceptance_criteria:normalizeCriteria(task.acceptance_criteria)});
+const readTasks=():Task[]=>{try{const saved=localStorage.getItem(config.tasksStorageKey);return (saved?JSON.parse(saved):seedTasks as Task[]).map(normalizeTask)}catch{return (seedTasks as Task[]).map(normalizeTask)}};
+const writeTasks=(tasks:Task[])=>localStorage.setItem(config.tasksStorageKey,JSON.stringify(tasks));
+export const useTaskStore=create<State>((set,get)=>({tasks:[],loading:false,notice:'',error:'',load:async()=>{set({loading:true,error:''});try{set({tasks:readTasks()})}catch(e){set({error:(e as Error).message})}finally{set({loading:false})}},create:async task=>{const tasks=[...get().tasks,normalizeTask(task)];writeTasks(tasks);set({tasks,notice:'Tarea creada'})},update:async(id,patch)=>{const tasks=get().tasks.map(task=>task.task_id===id?normalizeTask({...task,...patch}):task);writeTasks(tasks);set({tasks,notice:'Tarea actualizada'})},remove:async id=>{const tasks=get().tasks.filter(task=>task.task_id!==id);writeTasks(tasks);set({tasks,notice:'Tarea eliminada'})},move:async(id,status)=>{const tasks=get().tasks.map(task=>task.task_id===id?{...task,status:status as TaskStatus}:task);writeTasks(tasks);set({tasks})}}));
