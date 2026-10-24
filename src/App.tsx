@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useShallow } from "zustand/react/shallow";
 import {
   Menu,
   MoreVertical,
@@ -7,16 +8,46 @@ import {
   RefreshCw,
   Trash2,
   X,
-  ChevronRight,
   Edit3,
   Eye,
   Bold,
   Underline,
 } from "lucide-react";
 import { config, type Board, type TaskStatus } from "./config";
-import { useTaskStore } from "./store";
+import { flushTaskStateUpdates, pauseTaskStateUpdates, useTaskStore } from "./store";
+import { readData, writeData } from "./dataApi";
 import type { AcceptanceCriterion, Task } from "./types";
 import "./index.css";
+
+const TaskCard = memo(({
+  task,
+  onOpen,
+  onDragStart,
+  onDragEnd,
+}: {
+  task: Task;
+  onOpen: (task: Task, element: HTMLElement) => void;
+  onDragStart: (taskId: string) => void;
+  onDragEnd: () => void;
+}) => (
+  <article
+    draggable
+    tabIndex={0}
+    role="button"
+    onDragStart={() => onDragStart(task.task_id)}
+    onDragEnd={onDragEnd}
+    onClick={(event) => onOpen(task, event.currentTarget)}
+    onKeyDown={(event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        onOpen(task, event.currentTarget);
+      }
+    }}
+    className="task-card min-w-0 cursor-pointer rounded-lg border border-slate-700 bg-slate-900 p-2 outline-none hover:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-300"
+  >
+    <h3 className="truncate font-medium" title={task.name}>{task.name}</h3>
+  </article>
+));
 
 const empty = {
   task_id: "",
@@ -25,20 +56,17 @@ const empty = {
   acceptance_criteria: "",
   status: "backlog" as TaskStatus,
 };
-const storedWidth = () => {
+const storedWidth = (): number => {
   const value = Number(localStorage.getItem(config.sidebarStorageKey));
-  return Number.isFinite(value) &&
-    value >= config.minSidebarWidth &&
-    value <= config.maxSidebarWidth
+  const minWidth = window.innerWidth * 0.2;
+  return Number.isFinite(value) && value >= minWidth && value <= window.innerWidth
     ? value
     : config.defaultSidebarWidth;
 };
 const renderCriterionText = (value: string) => value
   .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
   .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-  .replace(/__\{(#[0-9a-fA-F]{3,8})\}(.+?)__/g, '<u style="text-decoration-color:$1">$2</u>')
   .replace(/__(.+?)__/g, "<u>$1</u>");
-const boardKey = "fast-dashboard-boards";
 const boardColors = [
   "#9aa3ad",
   "#9b8ab8",
@@ -48,28 +76,37 @@ const boardColors = [
   "#6aa6c9",
   "#c77d9b",
 ];
-const readBoards = (): Board[] => {
-  try {
-    const saved = localStorage.getItem(boardKey);
-    const value = saved ? JSON.parse(saved) : [...config.statuses];
-    return Array.isArray(value)
-      ? value.map((board, index) => ({ ...board, accent: typeof board.accent === "string" && board.accent ? board.accent : boardColors[index % boardColors.length] }))
-      : [...config.statuses];
-  } catch {
-    return [...config.statuses];
-  }
-};
+const readBoards = (): Board[] => [...config.statuses];
 
 export default function App() {
-  const { tasks, loading, error, notice, load, move, create, update, remove } =
-    useTaskStore();
+  const tasks = useTaskStore((state) => state.tasks);
+  const { loading, error, notice } = useTaskStore(useShallow((state) => ({
+    loading: state.loading,
+    error: state.error,
+    notice: state.notice,
+  })));
+  // Actions are stable Zustand store members. Reading them through getState
+  // avoids subscribing App to action references and keeps state subscriptions
+  // limited to the data actually rendered here.
+  const { load, move, create, update, remove } = useTaskStore.getState();
   const [selected, setSelected] = useState<Task | null>(null);
+  // Visibility is explicit: task data/edit state may change without closing the sidebar.
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
   const [taskDialog, setTaskDialog] = useState(false);
   const [form, setForm] = useState(empty);
   const [criterionDrafts, setCriterionDrafts] = useState<AcceptanceCriterion[]>([]);
-  const [criterionColor, setCriterionColor] = useState("#facc15");
-  const [width, setWidth] = useState(storedWidth);
+  // While the drawer is open the store batches task publications to avoid
+  // rerendering the board. Keep the criteria slice responsive locally.
+  const [criteriaOverride, setCriteriaOverride] = useState<{
+    taskId: string;
+    items: AcceptanceCriterion[];
+  } | null>(null);
+  const [statusOverride, setStatusOverride] = useState<{
+    taskId: string;
+    status: TaskStatus;
+  } | null>(null);
+  const [width, setWidth] = useState<number>(storedWidth);
   const [drag, setDrag] = useState<string | null>(null);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [actionsAnchor, setActionsAnchor] = useState({ top: 0, left: 0 });
@@ -89,21 +126,48 @@ export default function App() {
   const [criterionDialog, setCriterionDialog] = useState<{ mode: "edit" | "delete"; item: AcceptanceCriterion; value: string } | null>(null);
   const [boards, setBoards] = useState<Board[]>(readBoards);
   const triggerRef = useRef<HTMLElement | null>(null);
+  // Keep refreshes from replacing the task collection during drawer interaction.
+  const deferredLoadRef = useRef(false);
   const closeRef = useRef<HTMLButtonElement | null>(null);
-  const drawerOpen = Boolean(selected || editing);
-  const selectedTask = selected
-    ? (tasks.find((task) => task.task_id === selected.task_id) ?? selected)
-    : null;
-  const generateTaskId = () => {
+  const drawerOpen = sidebarOpen || Boolean(editing) || taskDialog;
+  useEffect(() => {
+    if (drawerOpen) pauseTaskStateUpdates();
+    else flushTaskStateUpdates();
+  }, [drawerOpen]);
+  // Subscribe the detail sidebar only to the task it displays. Updates to other
+  // cards no longer force the popup state/markup through this selector.
+  const selectedTask = useTaskStore((state) => selected
+    ? (state.tasks.find((task) => task.task_id === selected.task_id) ?? selected)
+    : null);
+  // Keep the detail sidebar mounted across store-driven renders. The explicit
+  // close action clears `selected`, so this does not undo an intentional close.
+  useEffect(() => {
+    if (selected && selectedTask && !sidebarOpen && !taskDialog && !editing) {
+      setSidebarOpen(true);
+    }
+  }, [selected, selectedTask, sidebarOpen, taskDialog, editing]);
+  useEffect(() => {
+    if (!selectedTask || statusOverride?.taskId !== selectedTask.task_id) return;
+    if (selectedTask.status === statusOverride.status) setStatusOverride(null);
+  }, [selectedTask?.task_id, selectedTask?.status, statusOverride]);
+  const generateTaskId = useCallback(() => {
     const used = new Set(tasks.map((task) => task.task_id));
     let candidate = `TASK-${Date.now()}`;
     let suffix = 1;
     while (used.has(candidate)) candidate = `TASK-${Date.now()}-${suffix++}`;
     return candidate;
-  };
+  }, [tasks]);
   useEffect(() => {
     void load();
   }, [load]);
+  useEffect(() => {
+    void Promise.all([readData<Board[]>("boards.json"), readData<{ sidebarWidth?: number }>("preferences.json")]).then(([savedBoards, preferences]) => {
+      setBoards(savedBoards.length ? savedBoards : [...config.statuses]);
+      const nextWidth = Number(preferences.sidebarWidth);
+      const minWidth = window.innerWidth * 0.2;
+      if (Number.isFinite(nextWidth)) setWidth(Math.min(window.innerWidth, Math.max(minWidth, nextWidth)));
+    }).catch(() => undefined);
+  }, []);
   useEffect(() => {
     if (!notice) return;
     const timer = setTimeout(() => useTaskStore.setState({ notice: "" }), 2500);
@@ -113,7 +177,10 @@ export default function App() {
     if (!drawerOpen) return;
     closeRef.current?.focus();
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") close();
+      if (event.key !== "Escape") return;
+      if (editing) setEditing(null);
+      else if (taskDialog) setTaskDialog(false);
+      else close();
     };
     addEventListener("keydown", onKey);
     const old = document.body.style.overflow;
@@ -122,11 +189,14 @@ export default function App() {
       removeEventListener("keydown", onKey);
       document.body.style.overflow = old;
     };
-  }, [drawerOpen]);
+  }, [drawerOpen, editing, taskDialog]);
   useEffect(() => {
     if (!taskDialog) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") close();
+      if (event.key === "Escape") {
+        setTaskDialog(false);
+        setCriterionMenu(null);
+      }
     };
     addEventListener("keydown", onKey);
     return () => removeEventListener("keydown", onKey);
@@ -176,16 +246,45 @@ export default function App() {
           .map((item, index) => typeof item === "string" ? { id: `criterion-${index + 1}`, text: item, completed: false } : item)
       : []);
     // Preserve the selected detail while the edit popup is open.
-    if (task) setSelected(task);
+    if (task) {
+      setSelected(task);
+      setSidebarOpen(true);
+    }
     setActionsOpen(false);
   };
   const close = () => {
+    setSidebarOpen(false);
     setSelected(null);
+    setCriteriaOverride(null);
+    setStatusOverride(null);
     setEditing(null);
     setTaskDialog(false);
     setActionsOpen(false);
     setBoardMenu(null);
+    setCriterionEditing(null);
+    setCriterionDeleting(null);
+    setCriterionViewing(null);
+    setCriterionMenu(null);
     requestAnimationFrame(() => triggerRef.current?.focus());
+    if (deferredLoadRef.current) {
+      deferredLoadRef.current = false;
+      void load();
+    }
+  };
+  const refresh = () => {
+    if (drawerOpen) {
+      deferredLoadRef.current = true;
+      return;
+    }
+    void load();
+  };
+  const closeTaskForm = () => {
+    setEditing(null);
+    setTaskDialog(false);
+    setCriterionEditing(null);
+    setCriterionDeleting(null);
+    setCriterionViewing(null);
+    setCriterionMenu(null);
   };
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -202,6 +301,7 @@ export default function App() {
           task_id: form.task_id,
           name: form.name,
           description: form.description,
+          acceptance_criteria: value.acceptance_criteria,
         });
       } else {
         await create(value);
@@ -215,15 +315,19 @@ export default function App() {
     }
   };
   const moveTask = async (id: string, status: TaskStatus) => {
+    setStatusOverride({ taskId: id, status });
     try {
       await move(id, status);
     } finally {
       setDrag(null);
     }
   };
+  const selectedStatus = selectedTask && statusOverride?.taskId === selectedTask.task_id
+    ? statusOverride.status
+    : selectedTask?.status;
   const saveBoards = (next: Board[]) => {
     setBoards(next);
-    localStorage.setItem(boardKey, JSON.stringify(next));
+    void writeData("boards.json", next);
   };
   const openBoardDialog = (board?: Board) => {
     setBoardDialog(board ? { mode: "edit", board, label: board.label, accent: board.accent } : { mode: "create", label: "", accent: boardColors[boards.length % boardColors.length] });
@@ -268,19 +372,46 @@ export default function App() {
     saveBoards(boards.filter((item) => item.value !== board.value));
     setBoardToDelete(null);
   };
-  const criteria: AcceptanceCriterion[] =
-    selectedTask && Array.isArray(selectedTask.acceptance_criteria)
+  const criteria = useMemo<AcceptanceCriterion[]>(() =>
+    selectedTask && criteriaOverride?.taskId === selectedTask.task_id
+      ? criteriaOverride.items
+      : selectedTask && Array.isArray(selectedTask.acceptance_criteria)
       ? selectedTask.acceptance_criteria.map((item, index) =>
           typeof item === "string"
             ? { id: `legacy-${index}`, text: item, completed: false }
             : item,
         )
-      : [];
+      : [], [selectedTask, criteriaOverride]);
+  const criteriaRef = useRef<AcceptanceCriterion[]>(criteria);
+  useEffect(() => {
+    criteriaRef.current = criteria;
+  }, [selectedTask?.task_id, selectedTask?.acceptance_criteria]);
   const updateCriteria = async (next: AcceptanceCriterion[]) => {
-    if (selectedTask)
+    criteriaRef.current = next;
+    if (selectedTask) {
+      setCriteriaOverride({ taskId: selectedTask.task_id, items: next });
       await update(selectedTask.task_id, { acceptance_criteria: next });
+    }
   };
-  const activeCriteria = taskDialog ? criterionDrafts : criteria;
+  const activeCriteria = useMemo(
+    () => taskDialog ? criterionDrafts : criteria,
+    [criteria, criterionDrafts, taskDialog],
+  );
+  const boardColumns = useMemo(
+    () => boards.map((board) => ({
+      board,
+      tasks: tasks.filter((task) => task.status === board.value),
+    })),
+    [boards, tasks],
+  );
+  const openTask = useCallback((task: Task, element: HTMLElement) => {
+    triggerRef.current = element;
+    setSidebarOpen(true);
+    setSelected(task);
+    setActionsOpen(false);
+  }, []);
+  const startTaskDrag = useCallback((taskId: string) => setDrag(taskId), []);
+  const endTaskDrag = useCallback(() => setDrag(null), []);
   const updateActiveCriteria = async (next: AcceptanceCriterion[]) => {
     if (taskDialog) setCriterionDrafts(next);
     else await updateCriteria(next);
@@ -289,13 +420,13 @@ export default function App() {
     const value = text.trim();
     if (value)
       await updateCriteria([
-        ...criteria,
+        ...criteriaRef.current,
         { id: `criterion-${Date.now()}`, text: value, completed: false },
       ]);
   };
   const toggleCriterion = async (id: string) =>
     updateCriteria(
-      criteria.map((item) => ({
+      criteriaRef.current.map((item) => ({
         ...item,
         completed: item.id === id ? !item.completed : item.completed,
       })),
@@ -303,8 +434,6 @@ export default function App() {
   const editCriterion = (item: AcceptanceCriterion) => {
     setCriterionEditing(item);
     setCriterionDraft(item.text);
-    const color = item.text.match(/__\{(#[0-9a-fA-F]{3,8})\}/)?.[1];
-    setCriterionColor(color || "#facc15");
   };
   const saveCriterion = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -314,9 +443,6 @@ export default function App() {
     setCriterionEditing(null);
   };
   const deleteCriterion = (item: AcceptanceCriterion) => setCriterionDeleting(item);
-  const applyCriterionColor = (color: string) => {
-    applyCriterionFormat("__{" + color + "}", "__");
-  };
   const applyCriterionFormat = (opening: string, closing: string) => {
     const textarea = criterionTextRef.current;
     if (!textarea) return;
@@ -352,7 +478,7 @@ export default function App() {
           aria-label="Refresh"
           title="Refresh"
           disabled={loading}
-          onClick={() => void load()}
+          onClick={refresh}
         >
           <RefreshCw size={22} />
         </button>
@@ -374,8 +500,7 @@ export default function App() {
           aria-label="Tablero de tareas"
           className="dashboard-grid min-h-0 flex-1 items-stretch gap-3 pb-0 sm:gap-4"
         >
-          {boards.map((col) => {
-            const columnTasks = tasks.filter((t) => t.status === col.value);
+          {boardColumns.map(({ board: col, tasks: columnTasks }) => {
             return (
               <div
                 key={col.value}
@@ -460,32 +585,13 @@ export default function App() {
                   </div>
                 <div className="board-column-content grid min-h-0 content-start gap-2">
                   {columnTasks.map((task) => (
-                    <article
+                    <TaskCard
                       key={task.task_id}
-                      draggable
-                      tabIndex={0}
-                      role="button"
-                      onDragStart={() => setDrag(task.task_id)}
-                      onDragEnd={() => setDrag(null)}
-                      onClick={(event) => {
-                        triggerRef.current = event.currentTarget;
-                        setSelected(task);
-                        setActionsOpen(false);
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault();
-                          triggerRef.current = event.currentTarget;
-                          setSelected(task);
-                          setActionsOpen(false);
-                        }
-                      }}
-                      className="task-card min-w-0 cursor-pointer rounded-lg border border-slate-700 bg-slate-900 p-2 outline-none hover:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-300"
-                    >
-                      <h3 className="truncate font-medium" title={task.name}>
-                        {task.name}
-                      </h3>
-                    </article>
+                      task={task}
+                      onOpen={openTask}
+                      onDragStart={startTaskDrag}
+                      onDragEnd={endTaskDrag}
+                    />
                   ))}
                   {!columnTasks.length && (
                     <p className="py-3 text-center text-sm text-slate-500">
@@ -512,7 +618,7 @@ export default function App() {
             <div className="grid gap-4">
               <h2 id="board-delete-title" className="text-lg font-bold">Delete board</h2>
               <p className="text-slate-300">Are you sure you want to delete “{boardToDelete.label}”? Tasks will move to the first available board.</p>
-              <div className="flex justify-end gap-2"><button type="button" className="rounded border border-slate-600 px-4 py-2 text-slate-200 hover:bg-slate-800" onClick={() => setBoardToDelete(null)}>Cancel</button><button type="button" className="rounded bg-red-600 px-4 py-2 font-medium text-white hover:bg-red-500" onClick={() => void deleteBoard(boardToDelete)}>Delete</button></div>
+              <div className="flex justify-end gap-2"><button type="button" className="rounded border border-red-400 px-4 py-2 font-medium text-red-300 hover:bg-red-950" onClick={() => setBoardToDelete(null)}>Cancel</button><button type="button" className="rounded bg-red-600 px-4 py-2 font-medium text-white hover:bg-red-500" onClick={() => void deleteBoard(boardToDelete)}>Delete</button></div>
             </div>
           </div>
         </div>
@@ -523,7 +629,7 @@ export default function App() {
             <div className="grid gap-4">
               <h2 id="task-delete-title" className="text-lg font-bold">Delete task</h2>
               <p className="text-slate-300">Are you sure you want to delete “{taskToDelete.name}”?</p>
-              <div className="flex justify-end gap-2"><button type="button" className="rounded border border-slate-600 px-4 py-2 text-slate-200 hover:bg-slate-800" onClick={() => setTaskToDelete(null)}>Cancel</button><button type="button" className="rounded bg-red-600 px-4 py-2 font-medium text-white hover:bg-red-500" onClick={async () => { await remove(taskToDelete.task_id); setTaskToDelete(null); close(); }}>Delete</button></div>
+              <div className="flex justify-end gap-2"><button type="button" className="rounded border border-red-400 px-4 py-2 font-medium text-red-300 hover:bg-red-950" onClick={() => setTaskToDelete(null)}>Cancel</button><button type="button" className="rounded bg-red-600 px-4 py-2 font-medium text-white hover:bg-red-500" onClick={async () => { await remove(taskToDelete.task_id); setTaskToDelete(null); close(); }}>Delete</button></div>
             </div>
           </div>
         </div>
@@ -548,7 +654,7 @@ export default function App() {
                 </span>
               </div>
               <div className="flex justify-end gap-2">
-                <button type="button" className="rounded border border-slate-600 px-4 py-2 text-slate-200 hover:bg-slate-800" onClick={() => setBoardDialog(null)}>Cancel</button>
+                <button type="button" className="rounded border border-red-400 px-4 py-2 font-medium text-red-300 hover:bg-red-950" onClick={() => setBoardDialog(null)}>Cancel</button>
                 <button type="submit" className="rounded bg-green-600 px-4 py-2 font-medium text-white hover:bg-green-500">Save</button>
               </div>
             </form>
@@ -556,12 +662,12 @@ export default function App() {
         </div>
       )}
       {taskDialog && (
-        <div className="fixed inset-0 z-30 grid place-items-center bg-black/60 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) close(); }}>
+        <div className="fixed inset-0 z-30 grid place-items-center bg-black/60 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) closeTaskForm(); }}>
           <div role="dialog" aria-modal="true" aria-labelledby="task-create-title" className="flex max-h-[calc(100dvh-2rem)] w-[min(36rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border border-slate-600 bg-slate-900 p-5 shadow-2xl">
-            <form onSubmit={save} className="grid min-h-0 gap-4 overflow-y-auto overscroll-contain pr-1">
+            <form id="task-create-form" onSubmit={save} className="grid min-h-0 gap-4 overflow-y-auto overscroll-contain pr-1">
               <div className="flex items-center justify-between gap-3">
                 <h2 id="task-create-title" className="text-lg font-bold">Add task</h2>
-                <button type="button" className="icon" aria-label="Close" title="Close" onClick={close}><X size={18} /></button>
+                <button type="button" className="icon" aria-label="Close" title="Close" onClick={closeTaskForm}><X size={18} /></button>
               </div>
               <label className="grid gap-1 text-sm text-slate-300">
                 Task ID
@@ -595,33 +701,36 @@ export default function App() {
                   {!criterionDrafts.length && <p className="rounded border border-dashed border-slate-700 p-3 text-center text-xs text-slate-500">No criteria yet.</p>}
                 </div>
               </div>
-              <div className="flex justify-end gap-2">
-                <button type="button" className="rounded border border-slate-600 px-4 py-2 text-slate-200 hover:bg-slate-800" onClick={close}>Cancel</button>
-                <button type="submit" className="rounded bg-green-600 px-4 py-2 font-medium text-white hover:bg-green-500">Add task</button>
-              </div>
             </form>
+            <div className="mt-4 flex shrink-0 justify-end gap-2 border-t border-slate-700 pt-4">
+              <button type="button" className="rounded border border-red-400 px-4 py-2 font-medium text-red-300 hover:bg-red-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-300" onClick={closeTaskForm}>Cancel</button>
+              <button type="submit" form="task-create-form" className="rounded bg-green-600 px-4 py-2 font-medium text-white hover:bg-green-500">Add task</button>
+            </div>
           </div>
         </div>
       )}
-      {(drawerOpen || taskDialog) && (
+      {(sidebarOpen || taskDialog) && (
         <>
-          <div className="fixed inset-0 z-10 bg-black/50" onClick={close} />
+          <div
+            className="fixed inset-0 z-10 bg-black/50"
+            aria-hidden="true"
+          />
           <aside
             role="dialog"
             aria-modal="true"
             aria-label={editing ? "Edit task" : "Task details"}
-            className={taskDialog ? "contents" : "task-sidebar fixed right-0 top-0 z-20 h-[100dvh] max-w-full overflow-y-auto border-l border-slate-700 bg-slate-900 p-4 pt-[max(1rem,env(safe-area-inset-top))] shadow-2xl sm:p-5"}
-            style={taskDialog ? undefined : { width: `min(${width}px,100vw)` }}
+            className={taskDialog ? "contents" : "task-sidebar fixed right-0 top-0 z-20 flex h-[100dvh] max-h-[100dvh] max-w-full flex-col overflow-y-auto border-l border-slate-600 bg-slate-900 p-4 shadow-2xl sm:p-6"}
+            style={taskDialog ? undefined : { width: `${Math.min(width, innerWidth)}px` }}
           >
-            {!taskDialog && <button
+            {!taskDialog && <div className="mb-4 flex shrink-0 justify-end pb-2"><button
               ref={closeRef}
               className="sidebar-close icon"
               onClick={close}
               aria-label="Close"
               title="Close"
             >
-              <ChevronRight />
-            </button>}
+              <X />
+            </button></div>}
             {(criterionEditing || criterionDeleting || criterionViewing) && (
               <div className="fixed inset-0 z-40 grid place-items-center bg-black/60 p-4">
                 <div role="dialog" aria-modal="true" aria-labelledby="criterion-popup-title" className="w-[min(28rem,calc(100vw-2rem))] rounded-xl border border-slate-600 bg-slate-900 p-5 shadow-2xl">
@@ -634,12 +743,12 @@ export default function App() {
                   ) : criterionEditing ? (
                     <form onSubmit={saveCriterion} className="grid gap-4">
                       <div className="flex items-center justify-between gap-3"><h2 id="criterion-popup-title" className="text-lg font-bold">Edit criterion</h2><button type="button" className="icon" aria-label="Close" onClick={() => setCriterionEditing(null)}><X size={18} /></button></div>
-                      <div className="flex items-center gap-1 rounded border border-slate-700 bg-slate-950 p-2" aria-label="Text formatting"><button type="button" className="icon" aria-label="Apply bold" title="Bold" onMouseDown={(event) => event.preventDefault()} onClick={() => applyCriterionFormat("**", "**")}><Bold size={17} /></button><button type="button" className="icon" aria-label="Apply underline" title="Underline" onMouseDown={(event) => event.preventDefault()} onClick={() => applyCriterionFormat("__", "__")}><Underline size={17} /></button><input id="criterion-color" type="color" aria-label="Apply color" title="Color" value={criterionColor} onChange={(event) => { const color = event.target.value; setCriterionColor(color); applyCriterionColor(color); }} className="h-8 w-12 cursor-pointer rounded border border-slate-600 bg-slate-900 p-1" /></div>
+                      <div className="flex items-center justify-end gap-1 rounded border border-slate-700 bg-slate-950 p-2" aria-label="Text formatting"><button type="button" className="icon" aria-label="Apply bold" title="Bold" onMouseDown={(event) => event.preventDefault()} onClick={() => applyCriterionFormat("**", "**")}><Bold size={17} /></button><button type="button" className="icon" aria-label="Apply underline" title="Underline" onMouseDown={(event) => event.preventDefault()} onClick={() => applyCriterionFormat("__", "__")}><Underline size={17} /></button></div>
                       <textarea ref={criterionTextRef} autoFocus value={criterionDraft} onChange={(event) => setCriterionDraft(event.target.value)} aria-label="Criterion text" required rows={6} className="w-full resize-y rounded border border-slate-700 bg-slate-950 p-2" />
-                      <div className="flex justify-end gap-2"><button type="button" className="rounded border border-slate-600 px-4 py-2 text-slate-200 hover:bg-slate-800" onClick={() => setCriterionEditing(null)}>Cancel</button><button type="submit" className="rounded bg-yellow-400 px-4 py-2 font-medium text-slate-950 hover:bg-yellow-300">Save</button></div>
+                      <div className="flex justify-end gap-2"><button type="button" className="rounded border border-red-400 px-4 py-2 font-medium text-red-300 hover:bg-red-950" onClick={() => setCriterionEditing(null)}>Cancel</button><button type="submit" className="rounded bg-yellow-400 px-4 py-2 font-medium text-slate-950 hover:bg-yellow-300">Save</button></div>
                     </form>
                   ) : (
-                    <div className="grid gap-4"><h2 id="criterion-popup-title" className="text-lg font-bold">Delete criterion</h2><p className="text-slate-300">Are you sure you want to delete “{criterionDeleting?.text}”?</p><div className="flex justify-end gap-2"><button type="button" className="rounded border border-slate-600 px-4 py-2 text-slate-200 hover:bg-slate-800" onClick={() => setCriterionDeleting(null)}>Cancel</button><button type="button" className="rounded bg-red-600 px-4 py-2 font-medium text-white hover:bg-red-500" onClick={() => void confirmDeleteCriterion()}>Delete</button></div></div>
+                    <div className="grid gap-4"><h2 id="criterion-popup-title" className="text-lg font-bold">Delete criterion</h2><p className="text-slate-300">Are you sure you want to delete “{criterionDeleting?.text}”?</p><div className="flex justify-end gap-2"><button type="button" className="rounded border border-red-400 px-4 py-2 font-medium text-red-300 hover:bg-red-950" onClick={() => setCriterionDeleting(null)}>Cancel</button><button type="button" className="rounded bg-red-600 px-4 py-2 font-medium text-white hover:bg-red-500" onClick={() => void confirmDeleteCriterion()}>Delete</button></div></div>
                   )}
                 </div>
               </div>
@@ -659,11 +768,11 @@ export default function App() {
                     aria-label="Cambiar estado"
                     className="status-select status-select-compact shrink-0 rounded border p-1.5 text-xs"
                     style={{
-                      color: boards.find((s) => s.value === selectedTask?.status)?.accent,
-                      borderColor: boards.find((s) => s.value === selectedTask?.status)?.accent,
-                      backgroundColor: `${boards.find((s) => s.value === selectedTask?.status)?.accent}22`,
+                      color: boards.find((s) => s.value === selectedStatus)?.accent,
+                      borderColor: boards.find((s) => s.value === selectedStatus)?.accent,
+                      backgroundColor: `${boards.find((s) => s.value === selectedStatus)?.accent}22`,
                     }}
-                    value={selectedTask?.status}
+                    value={selectedStatus}
                     onChange={(event) => void moveTask(selectedTask!.task_id, event.target.value as TaskStatus)}
                   >
                     {boards.map((s) => <option key={s.value} value={s.value} style={{ color: s.accent, backgroundColor: "#0f172a" }}>{s.label}</option>)}
@@ -705,12 +814,12 @@ export default function App() {
               )}
             </div>
             {editing && (
-              <div className="task-edit-popup fixed left-1/2 top-1/2 z-30 max-h-[calc(100dvh-2rem)] w-[min(36rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-slate-600 bg-slate-900 p-4 shadow-2xl sm:p-5">
+              <div className="task-edit-popup fixed left-1/2 top-1/2 z-30 flex max-h-[calc(100dvh-2rem)] w-[min(36rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-slate-600 bg-slate-900 p-4 shadow-2xl sm:p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <h2 className="text-lg font-bold">Edit task</h2>
                 <button type="button" className="icon inline-grid place-items-center justify-center leading-none" aria-label="Cancel editing" title="Cancel editing" onClick={() => setEditing(null)}><X size={18} /></button>
               </div>
-              <form onSubmit={save} className="grid min-w-0 gap-4">
+              <form id="task-edit-form" onSubmit={save} className="grid min-h-0 min-w-0 gap-4 overflow-y-auto overscroll-contain pr-1">
                 <label className="grid min-w-0 gap-1 text-sm text-slate-300">
                   <span className="sr-only">Task ID</span>
                   <input
@@ -743,24 +852,11 @@ export default function App() {
                     }
                   />
                 </label>
-                <div className="flex justify-end gap-2">
-                  <button
-                    type="submit"
-                    className="rounded bg-green-600 px-4 py-2 font-medium text-white hover:bg-green-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-300"
-                    aria-label="Save"
-                  >
-                    Save
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded border border-red-400 px-4 py-2 font-medium text-red-300 hover:bg-red-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-300"
-                    aria-label="Cancel editing"
-                    onClick={() => setEditing(null)}
-                  >
-                    Cancel
-                  </button>
-                </div>
               </form>
+              <div className="mt-4 flex shrink-0 justify-end gap-2 border-t border-slate-700 pt-4">
+                <button type="button" className="rounded border border-red-400 px-4 py-2 font-medium text-red-300 hover:bg-red-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-300" aria-label="Cancel editing" onClick={() => setEditing(null)}>Cancel</button>
+                <button type="submit" form="task-edit-form" className="rounded bg-green-600 px-4 py-2 font-medium text-white hover:bg-green-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-300" aria-label="Save">Save</button>
+              </div>
               </div>
             )}
             {selected && (
@@ -874,31 +970,21 @@ export default function App() {
                 </section>
               </div>
             )}
-            <div
-              className="sidebar-resize absolute left-0 top-0 hidden h-full w-4 cursor-ew-resize md:block"
+            {!taskDialog && <div className="sidebar-resize absolute left-0 top-0 z-30 h-full w-3 cursor-ew-resize" role="separator" aria-label="Resize sidebar" tabIndex={0}
               onPointerDown={(event) => {
                 event.currentTarget.setPointerCapture(event.pointerId);
-                const resize = (clientX: number) => {
-                  const next = Math.min(
-                    config.maxSidebarWidth,
-                    Math.max(config.minSidebarWidth, innerWidth - clientX),
-                  );
+                const onMove = (move: PointerEvent) => {
+                  const minWidth = innerWidth * 0.2;
+                  const next = Math.min(innerWidth, Math.max(minWidth, innerWidth - move.clientX));
                   setWidth(next);
-                  localStorage.setItem(
-                    config.sidebarStorageKey,
-                    String(Math.round(next)),
-                  );
+                  localStorage.setItem(config.sidebarStorageKey, String(Math.round(next)));
+                  void writeData("preferences.json", { sidebarWidth: Math.round(next) });
                 };
-                const onMove = (pointer: PointerEvent) =>
-                  resize(pointer.clientX);
-                const stop = () => {
-                  removeEventListener("pointermove", onMove);
-                  removeEventListener("pointerup", stop);
-                };
+                const stop = () => { removeEventListener("pointermove", onMove); removeEventListener("pointerup", stop); };
                 addEventListener("pointermove", onMove);
                 addEventListener("pointerup", stop);
               }}
-            />
+            />}
           </aside>
         </>
       )}

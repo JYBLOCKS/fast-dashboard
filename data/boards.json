@@ -1,7 +1,27 @@
 [
   {
-    "board_id": "default",
-    "name": "Mi tablero",
-    "description": "Tablero principal"
+    "value": "backlog",
+    "label": "Backlog",
+    "accent": "#9aa3ad"
+  },
+  {
+    "value": "todo",
+    "label": "TO-DO",
+    "accent": "#895cd6"
+  },
+  {
+    "value": "in_progress",
+    "label": "In Progress",
+    "accent": "#c5ad68"
+  },
+  {
+    "value": "done",
+    "label": "Done",
+    "accent": "#78a58a"
+  },
+  {
+    "value": "hold",
+    "label": "Hold",
+    "accent": "#c28b5b"
   }
 ]

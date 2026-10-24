@@ -1,8 +1,7 @@
 export const config = {
   appName: 'Fast Dashboard',
-  tasksStorageKey: 'fast-dashboard-tasks',
-  sidebarStorageKey: 'fast-dashboard-sidebar-width',
   defaultSidebarWidth: 520,
+  sidebarStorageKey: 'fast-dashboard-sidebar-width',
   minSidebarWidth: 320,
   maxSidebarWidth: 800,
   statuses: [

@@ -1,30 +1,30 @@
 [
   {
-    "task_id": "task-001",
-    "name": "Definir alcance del dashboard",
-    "description": "Acordar los estados, campos y comportamiento principal del tablero.",
-    "acceptance_criteria": "El tablero incluye Backlog, TO-DO, In Progress, Done y Hold.",
-    "status": "done"
-  },
-  {
-    "task_id": "task-002",
-    "name": "Implementar API de tareas",
-    "description": "Crear endpoints para consultar tareas y actualizar su estado.",
-    "acceptance_criteria": "El cambio de estado se persiste en data/tasks.json usando task_id.",
-    "status": "in_progress"
-  },
-  {
-    "task_id": "task-003",
-    "name": "Conectar el tablero",
-    "description": "Cargar las tareas desde la API y permitir drag and drop.",
-    "acceptance_criteria": "Al soltar una tarjeta en otra columna, su estado se actualiza y persiste.",
-    "status": "todo"
-  },
-  {
     "task_id": "task-004",
-    "name": "Recopilar feedback",
-    "description": "Validar el tablero con usuarios y registrar mejoras.",
-    "acceptance_criteria": "Las observaciones quedan documentadas como nuevas tareas.",
+    "name": "Tender la cama",
+    "description": "la cama debe estar bien tendida como siempre",
+    "acceptance_criteria": [
+      {
+        "id": "criterion-1",
+        "text": "poner la sabana azul oscuro",
+        "completed": false
+      },
+      {
+        "id": "criterion-1792823963912",
+        "text": "poner la sabana azul claro",
+        "completed": false
+      },
+      {
+        "id": "criterion-1792823983614",
+        "text": "poner las almohadas",
+        "completed": false
+      },
+      {
+        "id": "criterion-1792824391109",
+        "text": "poner a diana en la cama",
+        "completed": false
+      }
+    ],
     "status": "backlog"
   }
 ]

@@ -6,9 +6,9 @@
   "packageManager": "pnpm@12.15.0",
   "description": "React task dashboard with local browser persistence",
   "scripts": {
-    "dev": "vite",
+    "dev": "node scripts/dev.mjs",
     "build": "tsc -b && vite build",
-    "start": "vite preview --host 0.0.0.0",
+    "start": "node server.mjs",
     "test": "npm run build"
   },
   "dependencies": {
