@@ -18,5 +18,5 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-      - run: npm start > /tmp/fast-dashboard-preview.log 2>&1 &
+      - run: PORT=4173 npm start > /tmp/fast-dashboard-preview.log 2>&1 &
       - run: node -e "setTimeout(()=>fetch('http://127.0.0.1:4173').then(r=>{if(!r.ok) process.exit(1)}).catch(()=>process.exit(1)), 3000)"
