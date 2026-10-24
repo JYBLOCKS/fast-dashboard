@@ -557,8 +557,8 @@ export default function App() {
       )}
       {taskDialog && (
         <div className="fixed inset-0 z-30 grid place-items-center bg-black/60 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) close(); }}>
-          <div role="dialog" aria-modal="true" aria-labelledby="task-create-title" className="max-h-[calc(100dvh-2rem)] w-[min(36rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-slate-600 bg-slate-900 p-5 shadow-2xl">
-            <form onSubmit={save} className="grid gap-4">
+          <div role="dialog" aria-modal="true" aria-labelledby="task-create-title" className="flex max-h-[calc(100dvh-2rem)] w-[min(36rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border border-slate-600 bg-slate-900 p-5 shadow-2xl">
+            <form onSubmit={save} className="grid min-h-0 gap-4 overflow-y-auto overscroll-contain pr-1">
               <div className="flex items-center justify-between gap-3">
                 <h2 id="task-create-title" className="text-lg font-bold">Add task</h2>
                 <button type="button" className="icon" aria-label="Close" title="Close" onClick={close}><X size={18} /></button>
@@ -584,8 +584,12 @@ export default function App() {
                 </div>
               </div>
               <div className="grid gap-2 text-sm text-slate-300">
-                <div className="flex items-center justify-between"><span>Acceptance criteria</span><button type="button" className="rounded border border-slate-600 px-2 py-1 text-xs hover:bg-slate-800" onClick={() => setCriterionDrafts([...criterionDrafts, { id: `criterion-${Date.now()}`, text: "New criterion", completed: false }])}><Plus size={13} className="mr-1 inline" />Add criterion</button></div>
+                <span>Acceptance criteria</span>
                 <span className="text-xs text-slate-500">Each criterion can be added and edited separately.</span>
+                <div className="flex gap-2">
+                  <input name="new-task-criterion" aria-label="New acceptance criterion" placeholder="Add criterion…" className="min-w-0 flex-1 rounded border border-slate-700 bg-slate-950 p-2 text-sm" />
+                  <button type="button" className="icon shrink-0" aria-label="Add criterion" title="Add criterion" onClick={(event) => { const input = event.currentTarget.previousElementSibling as HTMLInputElement; const text = input.value.trim(); if (!text) return; setCriterionDrafts([...criterionDrafts, { id: `criterion-${Date.now()}`, text, completed: false }]); input.value = ""; }}><Plus size={18} /></button>
+                </div>
                 <div className="grid gap-2">
                   {criterionDrafts.map((criterion, index) => <div key={criterion.id} className="flex items-center gap-2"><span className="w-5 text-center text-xs text-slate-500">{index + 1}</span><span className="min-w-0 flex-1 truncate" dangerouslySetInnerHTML={{ __html: renderCriterionText(criterion.text) }} /><button type="button" className="icon" aria-label={`More options for: ${criterion.text}`} aria-expanded={criterionMenu === criterion.id} onMouseDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); const rect = event.currentTarget.getBoundingClientRect(); setCriterionAnchor({ top: rect.bottom + 4, left: Math.max(8, rect.right - 160) }); setCriterionMenu(criterionMenu === criterion.id ? null : criterion.id); }}><MoreVertical size={18} /></button>{criterionMenu === criterion.id && createPortal(<div ref={criterionPortalRef} role="menu" className="fixed z-[100] grid min-w-40 gap-1 rounded-lg border border-slate-700 bg-slate-900 p-1 shadow-xl" style={criterionAnchor} onMouseDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}><button role="menuitem" className="flex items-center gap-2 rounded px-3 py-2 text-left text-sm text-blue-300 hover:bg-slate-800" onClick={() => { setCriterionMenu(null); setCriterionViewing(criterion); }}><Eye size={15} />View</button><button role="menuitem" className="flex items-center gap-2 rounded px-3 py-2 text-left text-sm text-yellow-300 hover:bg-slate-800" onClick={() => { setCriterionMenu(null); editCriterion(criterion); }}><Edit3 size={15} />Edit</button><button role="menuitem" className="flex items-center gap-2 rounded px-3 py-2 text-left text-sm text-red-300 hover:bg-slate-800" onClick={() => { setCriterionMenu(null); deleteCriterion(criterion); }}><Trash2 size={15} />Delete</button></div>, document.body)}</div>)}
                   {!criterionDrafts.length && <p className="rounded border border-dashed border-slate-700 p-3 text-center text-xs text-slate-500">No criteria yet.</p>}
@@ -785,6 +789,31 @@ export default function App() {
                       {criteria.length}
                     </span>
                   </div>
+                  <form
+                    className="mt-3 flex gap-2"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      const input = event.currentTarget.elements.namedItem(
+                        "criterion",
+                      ) as HTMLInputElement;
+                      void addCriterion(input.value);
+                      input.value = "";
+                    }}
+                  >
+                    <input
+                      name="criterion"
+                      aria-label="New acceptance criterion"
+                      placeholder="Add criterion…"
+                      className="min-w-0 flex-1 rounded border border-slate-700 bg-slate-950 p-2 text-sm"
+                    />
+                    <button
+                      className="icon shrink-0"
+                      aria-label="Add criterion"
+                      title="Add criterion"
+                    >
+                      <Plus size={18} />
+                    </button>
+                  </form>
                   <div className="grid gap-2">
                     {criteria.map((criterion) => (
                       <div
@@ -842,31 +871,6 @@ export default function App() {
                       </div>
                     ))}
                   </div>
-                  <form
-                    className="mt-3 flex gap-2"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      const input = event.currentTarget.elements.namedItem(
-                        "criterion",
-                      ) as HTMLInputElement;
-                      void addCriterion(input.value);
-                      input.value = "";
-                    }}
-                  >
-                    <input
-                      name="criterion"
-                      aria-label="New acceptance criterion"
-                      placeholder="Add criterion…"
-                      className="min-w-0 flex-1 rounded border border-slate-700 bg-slate-950 p-2 text-sm"
-                    />
-                    <button
-                      className="icon shrink-0"
-                      aria-label="Add criterion"
-                      title="Add criterion"
-                    >
-                      <Plus size={18} />
-                    </button>
-                  </form>
                 </section>
               </div>
             )}
