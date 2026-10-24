@@ -211,7 +211,7 @@ export default function App() {
       setEditing(null);
       setTaskDialog(false);
     } catch {
-      /* API error remains visible after refresh. */
+      /* Keep the error visible after refresh. */
     }
   };
   const moveTask = async (id: string, status: TaskStatus) => {
