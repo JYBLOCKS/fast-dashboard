@@ -168,3 +168,8 @@ div.fixed.inset-0{position:fixed!important;inset:0!important;display:grid!import
 .note-color-picker{justify-content:center!important;padding-left:0!important}
 .edit-modal-overlay .task-edit-popup{width:min(36rem,calc(100vw - 2rem))!important;max-width:calc(100vw - 2rem)!important;max-height:calc(100dvh - 2rem)!important;overflow:hidden!important;padding:1.25rem!important}
 @media (max-width:639px){.edit-modal-overlay .task-edit-popup{width:calc(100vw - 2rem)!important;max-width:calc(100vw - 2rem)!important}}
+
+/* Keep the board frame visually above notes at the edges. */
+main:before{z-index:100;border-width:18px;pointer-events:none}
+.wall-canvas{z-index:1}
+.note-card{z-index:2;border-width:3px!important}
