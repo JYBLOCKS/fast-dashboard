@@ -173,3 +173,5 @@ div.fixed.inset-0{position:fixed!important;inset:0!important;display:grid!import
 main:before{z-index:100;border-width:18px;pointer-events:none}
 .wall-canvas{z-index:1}
 .note-card{z-index:2;border-width:3px!important}
+
+main:before{border-width:14px}
