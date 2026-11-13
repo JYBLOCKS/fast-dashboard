@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { config, type Board, type TaskStatus } from "./config";
 import { flushTaskStateUpdates, pauseTaskStateUpdates, useTaskStore } from "./store";
-import { readData, writeData } from "./dataApi";
+import { readData, writeData, subscribeToTaskChanges } from "./dataApi";
 import type { AcceptanceCriterion, Task } from "./types";
 import "./index.css";
 
@@ -161,6 +161,13 @@ export default function App() {
     void load();
   }, [load]);
   useEffect(() => {
+    const unsubscribe = subscribeToTaskChanges(() => {
+      if (drawerOpen) deferredLoadRef.current = true;
+      else void useTaskStore.getState().load();
+    });
+    return unsubscribe;
+  }, [drawerOpen]);
+  useEffect(() => {
     void Promise.all([readData<Board[]>("boards.json"), readData<{ sidebarWidth?: number }>("preferences.json")]).then(([savedBoards, preferences]) => {
       setBoards(savedBoards.length ? savedBoards : [...config.statuses]);
       const nextWidth = Number(preferences.sidebarWidth);
@@ -295,6 +302,7 @@ export default function App() {
       acceptance_criteria: criterionDrafts
         .map((item) => item.text.trim())
         .filter(Boolean),
+      position: editing?.position || { x: 40, y: 40 },
     };
     try {
       if (editing) {

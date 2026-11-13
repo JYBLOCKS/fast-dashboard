@@ -27,10 +27,10 @@
     ],
     "status": "backlog",
     "position": {
-      "x": 194.98046875,
-      "y": 99.98046875
+      "x": 24,
+      "y": 530.3333333333333
     },
-    "color": "#caffbf"
+    "color": "#bde0fe"
   },
   {
     "task_id": "TASK-1794608222970",
@@ -40,8 +40,20 @@
     "status": "backlog",
     "color": "#ffadad",
     "position": {
+      "x": 28.98046875,
+      "y": 287
+    }
+  },
+  {
+    "task_id": "TASK-1794612036220",
+    "name": "Tómela carepicha",
+    "description": "Sea necio ",
+    "acceptance_criteria": [],
+    "status": "backlog",
+    "color": "#d9c2ff",
+    "position": {
       "x": 24,
-      "y": 225.33333333333331
+      "y": 188
     }
   }
 ]

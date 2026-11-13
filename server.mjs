@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { existsSync } from "node:fs";
+import { existsSync, watch } from "node:fs";
 import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { dirname, join, normalize, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,6 +12,8 @@ const host = process.env.HOST || "0.0.0.0";
 const corsOrigin = process.env.CORS_ORIGIN || "http://localhost:3000";
 const maxBodyBytes = 2 * 1024 * 1024;
 const writeQueues = new Map();
+const sseClients = new Set();
+const broadcastTasksChanged = (reason = "updated") => { const line = String.fromCharCode(10); const message = "event: tasks" + line + "data: " + JSON.stringify({ reason, timestamp: Date.now() }) + line + line; for (const client of sseClients) { try { client.write(message); } catch { sseClients.delete(client); } } };
 
 const json = (response, status, value) => {
   response.writeHead(status, { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": corsOrigin, "access-control-allow-methods": "GET, PUT, OPTIONS", "access-control-allow-headers": "content-type", "access-control-max-age": "86400" });
@@ -42,6 +44,7 @@ const server = createServer(async (request, response) => {
     response.setHeader("access-control-allow-headers", "content-type");
     if (request.method === "OPTIONS") return response.end();
     const url = new URL(request.url, "http://localhost");
+    if (request.method === "GET" && url.pathname === "/api/events") { const line = String.fromCharCode(10); response.writeHead(200, { "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-cache, no-transform", "connection": "keep-alive", "access-control-allow-origin": corsOrigin }); response.write("retry: 3000" + line + line + "event: ready" + line + "data: " + JSON.stringify({ timestamp: Date.now() }) + line + line); sseClients.add(response); request.on("close", () => sseClients.delete(response)); return; }
     if (request.method === "GET" && url.pathname === "/healthz") return json(response, 200, { status: "ok" });
     const match = url.pathname.match(/^\/api\/data\/([^/]+)$/);
     if (match) {
@@ -54,6 +57,7 @@ const server = createServer(async (request, response) => {
         const value = JSON.parse(body);
         await mkdir(dataDir, { recursive: true });
         await atomicWrite(file, value);
+        if (filename === "tasks.json") broadcastTasksChanged("api");
         return json(response, 200, value);
       }
       return json(response, 405, { error: "Method not allowed" });
@@ -66,3 +70,10 @@ const server = createServer(async (request, response) => {
 
 server.on("error", (error) => { console.error(`Unable to bind ${host}:${port}:`, error.message); process.exitCode = 1; });
 server.listen(port, host, () => console.log(`Fast Dashboard server listening on http://${host}:${port}`));
+
+const watcher = existsSync(dataDir) ? watch(dataDir, (eventType, filename) => { if (filename?.toString() === "tasks.json" && (eventType === "change" || eventType === "rename")) broadcastTasksChanged("file"); }) : null;
+const heartbeat = setInterval(() => { const line = String.fromCharCode(10); for (const client of sseClients) { try { client.write(": heartbeat " + Date.now() + line + line); } catch { sseClients.delete(client); } } }, 25000);
+
+
+watcher?.unref?.();
+heartbeat.unref?.();
