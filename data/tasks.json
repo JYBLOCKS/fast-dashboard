@@ -10,21 +10,38 @@
         "completed": false
       },
       {
-        "id": "criterion-1792823963912",
+        "id": "criterion-2",
         "text": "poner la sabana azul claro",
         "completed": false
       },
       {
-        "id": "criterion-1792823983614",
+        "id": "criterion-3",
         "text": "poner las almohadas",
         "completed": false
       },
       {
-        "id": "criterion-1792824391109",
+        "id": "criterion-4",
         "text": "poner a diana en la cama",
         "completed": false
       }
     ],
-    "status": "backlog"
+    "status": "backlog",
+    "position": {
+      "x": 194.98046875,
+      "y": 99.98046875
+    },
+    "color": "#caffbf"
+  },
+  {
+    "task_id": "TASK-1794608222970",
+    "name": "Lavar los platos, ollas, cubiertos",
+    "description": "tambien limpia toda la cocina",
+    "acceptance_criteria": [],
+    "status": "backlog",
+    "color": "#ffadad",
+    "position": {
+      "x": 24,
+      "y": 225.33333333333331
+    }
   }
 ]

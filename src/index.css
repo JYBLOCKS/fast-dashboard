@@ -13,3 +13,158 @@ button,input,textarea,select{font:inherit}.icon{display:inline-grid;place-items:
 .board-column-content{align-content:start}.task-card{align-self:start;max-height:120px;overflow-y:auto;overflow-wrap:anywhere}
 @media (max-width:639px){.task-sidebar{min-width:0;transition:none}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important}}
+
+/* Wall-mounted corkboard treatment */
+body{background-color:#c7a77b;background-image:radial-gradient(circle at 20% 20%,#ffffff12 0 1px,transparent 2px),radial-gradient(circle at 80% 70%,#6d472522 0 1px,transparent 2px),linear-gradient(135deg,#d6b98d,#b88d5f);color:#28323a}
+main{position:relative}
+main:before{content:"";position:absolute;inset:0;pointer-events:none;border:12px solid #5f3d28;border-radius:18px;box-shadow:inset 0 0 0 3px #d9b786,0 18px 40px #39211255}
+main>*{position:relative}
+.dashboard-grid{padding:1.25rem;background:#a97a4d88;border:8px solid #734828;border-radius:12px;box-shadow:inset 0 0 28px #4d2d174d,0 8px 18px #39211244;gap:1.25rem}
+.board-column{background:#8b623d33;border:0!important;border-top:0!important;border-radius:6px;padding:1rem;box-shadow:none;overflow:visible}
+.board-column:before{content:"";display:block;height:5px;margin:-1rem -1rem .8rem;background:var(--board-accent,#f7e0a5);border-radius:5px 5px 0 0;box-shadow:0 2px 0 #4d2d1744}
+.note-card{position:relative;min-height:76px;box-shadow:3px 5px 8px #4d2d1744, inset 0 0 0 1px #ffffff66;transition:transform .15s ease,box-shadow .15s ease;transform:rotate(-.7deg)}
+.note-card:nth-child(2n){transform:rotate(.8deg)}
+.note-card:nth-child(3n){transform:rotate(-1.2deg)}
+.note-card:hover{transform:translateY(-4px) rotate(0);box-shadow:5px 10px 14px #4d2d1755}
+.note-card:before{content:"";position:absolute;top:-7px;left:50%;width:34px;height:14px;transform:translateX(-50%) rotate(-2deg);background:#d9c39b99;box-shadow:0 1px 2px #4d2d1744}
+.note-card h3{font-family:"Comic Sans MS","Segoe Print",cursive;font-size:1rem;white-space:normal;line-height:1.25}
+.note-color-picker{display:flex;flex-wrap:wrap;gap:.6rem}
+.note-color-swatch{width:2.1rem;height:2.1rem;border:2px solid #0003;border-radius:999px;cursor:pointer;box-shadow:0 2px 4px #0003;transition:transform .15s ease,box-shadow .15s ease}
+.note-color-swatch:hover{transform:scale(1.1)}
+.note-color-swatch[aria-pressed=true]{box-shadow:0 0 0 3px #fff,0 0 0 5px #2563eb;transform:scale(1.08)}
+@media (max-width:639px){main:before{border-width:6px}.dashboard-grid{padding:.75rem;border-width:5px}}
+
+/* Free-position 4K wall */
+main{width:100vw;max-width:none!important;height:100dvh;padding:0!important;overflow:hidden}
+.wall-viewport{width:100%;height:100%;overflow:auto;overscroll-behavior:contain;background:#a97a4d88;border:8px solid #734828;border-radius:12px;box-shadow:inset 0 0 28px #4d2d174d,0 8px 18px #39211244}
+.wall-canvas{position:relative;width:3840px;height:2160px;min-width:3840px;min-height:2160px;background:#a97a4d33;background-image:radial-gradient(circle at 20% 20%,#ffffff12 0 1px,transparent 2px),radial-gradient(circle at 80% 70%,#6d472522 0 1px,transparent 2px)}
+.add-task-button{width:54px;height:54px;border-radius:50%;background:#2563eb;color:#fff;box-shadow:0 5px 14px #17255488}.add-task-button:hover{background:#1d4ed8;color:#fff;transform:scale(1.05)}
+@media (max-width:639px){.wall-viewport{border-width:5px}.add-task-button{position:fixed;right:1rem;top:1rem}}
+.add-task-button{position:fixed!important;right:1.5rem;top:1.5rem;z-index:50}
+
+.note-card{width:auto!important;min-width:180px;max-width:380px;min-height:0;height:auto;overflow:visible}
+.note-card-heading{display:flex;align-items:flex-start;gap:.5rem}.note-card-heading h3{flex:1;min-width:0}.note-menu{min-width:32px;min-height:32px;width:32px;height:32px;color:#263238}.note-menu:hover{background:#00000018;color:#263238}.note-description{margin:.55rem 0 0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.35;font-size:.9rem}
+.toast-notification{position:fixed;left:50%;bottom:1.5rem;z-index:80;transform:translateX(-50%);min-width:min(28rem,calc(100vw - 2rem));padding:.85rem 1.15rem;border:2px solid #734828;background:#f7e5bf;color:#3f2a1d;box-shadow:0 8px 18px #39211266;font-weight:700;text-align:center;animation:toast-in .2s ease-out}.toast-notification.error{border-color:#9b2c2c;background:#ffe0d6;color:#721c24}.toast-notification.success{border-color:#56734c;background:#e5f2c8;color:#315229}@keyframes toast-in{from{opacity:0;transform:translate(-50%,1rem)}to{opacity:1;transform:translate(-50%,0)}}
+.task-sidebar{background:linear-gradient(135deg,#d6b98d,#b88d5f)!important;color:#28323a;border-left:8px solid #734828!important;box-shadow:-12px 0 30px #39211255!important}.task-sidebar input,.task-sidebar textarea,.task-sidebar select{background:#f7e5bf!important;color:#3f2a1d!important;border-color:#8b623d!important}.task-sidebar .sidebar-close{background:#f7e5bf;color:#3f2a1d;border-color:#734828}
+.criteria-section{display:none!important}
+main,.wall-viewport,.task-sidebar,.note-card,.icon,.add-task-button,.toast-notification,.note-color-swatch{border-radius:0!important}
+.note-card.dragging{opacity:.45}
+main:before{border-radius:0}
+
+/* Final visual refinements */
+.wall-viewport{border:0!important;border-radius:0!important;box-shadow:inset 0 0 28px #4d2d174d}
+.add-task-button{background:#734828!important;color:#f7e5bf!important;border:2px solid #c49b68!important;border-radius:0!important;box-shadow:0 5px 14px #39211266!important}
+.add-task-button:hover{background:#8b623d!important;color:#fff5da!important}
+.sidebar-close{left:auto!important;right:.75rem!important;top:.75rem!important}
+.note-card{border-radius:12px!important;color:#263238!important}
+.note-card h3,.note-card p,.note-menu{color:#263238!important}
+.task-sidebar,.task-sidebar *{color:#3f2a1d}
+.task-sidebar .text-blue-300,.task-sidebar .text-slate-300,.task-sidebar .text-slate-200,.task-sidebar .text-slate-400{color:#4b5563!important}
+.status-field,.status-select{display:none!important}
+
+.task-id-meta,.task-id-field{display:none!important}
+.task-actions-menu{background:#f7e5bf!important;border:2px solid #734828!important;box-shadow:0 8px 18px #39211266!important;border-radius:8px!important;padding:.35rem!important}
+.task-actions-menu button{color:#3f2a1d!important;border-radius:5px!important}.task-actions-menu button:hover{background:#d9b786!important;color:#24170f!important}
+
+/* Unified corkboard dialogs */
+.note-color-picker{padding-left:1rem}
+[role="dialog"]{background:linear-gradient(135deg,#d6b98d,#b88d5f)!important;color:#3f2a1d!important;border:2px solid #734828!important;border-radius:12px!important;box-shadow:0 16px 34px #39211266!important}
+[role="dialog"] h1,[role="dialog"] h2,[role="dialog"] h3,[role="dialog"] strong,[role="dialog"] legend,[role="dialog"] label,[role="dialog"] p,[role="dialog"] span{color:#3f2a1d!important}
+[role="dialog"] input,[role="dialog"] textarea,[role="dialog"] select{background:#f7e5bf!important;color:#3f2a1d!important;border:2px solid #8b623d!important;border-radius:6px!important}
+[role="dialog"] button:not(.icon):not(.note-color-swatch){border-color:#734828!important;border-radius:6px!important}
+[role="dialog"] button.bg-green-600,[role="dialog"] button[type="submit"]{background:#734828!important;color:#fff5da!important}
+[role="dialog"] button.bg-green-600:hover,[role="dialog"] button[type="submit"]:hover{background:#8b623d!important}
+[role="dialog"] button.icon{color:#734828!important;background:transparent!important;border:0!important}
+[role="dialog"] button.icon:hover{background:#d9b786!important}
+[role="dialog"] .text-red-300{color:#8f2d25!important}
+[role="dialog"] .border-red-400{border-color:#8f2d25!important}
+
+/* Keep every modal centered in the viewport, including those rendered inside the sidebar. */
+div.fixed.inset-0{position:fixed!important;inset:0!important;display:grid!important;place-items:center!important}
+.task-edit-popup{position:fixed!important;left:50%!important;top:50%!important;right:auto!important;bottom:auto!important;transform:translate(-50%,-50%)!important}
+
+.task-id-meta{display:flex!important}.task-id-value,.task-id-field{display:none!important}
+.task-id-meta .icon{color:#734828!important;background:transparent!important}.task-id-meta .icon:hover{background:#d9b786!important}
+
+.task-edit-popup{background:linear-gradient(135deg,#d6b98d,#b88d5f)!important;color:#3f2a1d!important;border:2px solid #734828!important}
+.task-detail-heading .task-actions-menu{z-index:100}
+
+.task-sidebar{background:var(--task-sidebar-color,#d6b98d)!important}
+
+.modal-overlay{position:fixed!important;inset:0!important;z-index:90!important;display:grid!important;place-items:center!important;background:#39211266!important;padding:1rem}
+.modal-overlay .task-edit-popup{position:relative!important;left:auto!important;top:auto!important;right:auto!important;bottom:auto!important;transform:none!important;margin:0!important}
+
+/* Simple, bold and consistent typography across devices */
+.note-card,.note-card *{font-family:Inter,ui-sans-serif,system-ui,sans-serif!important;font-style:normal!important}
+.note-card h3{font-weight:700!important;letter-spacing:0}
+.note-card{transform:none!important;box-shadow:3px 5px 8px #4d2d1744,inset 0 0 0 1px #ffffff66}
+.note-card:hover{transform:translateY(-2px)!important;box-shadow:4px 8px 12px #4d2d1755}
+.task-detail-heading h2{font-family:Inter,ui-sans-serif,system-ui,sans-serif!important;font-weight:700!important;font-style:normal!important}
+
+@media (max-width:639px){
+  body,.wall-viewport,.wall-viewport *{-webkit-user-select:none;user-select:none}
+  .wall-viewport input,.wall-viewport textarea,.wall-viewport [contenteditable=true]{-webkit-user-select:text;user-select:text}
+  .wall-viewport .note-card{touch-action:none;cursor:grab;-webkit-user-drag:element}
+  .wall-viewport .note-card:active{cursor:grabbing}
+}
+
+/* Floating add action stays behind the sidebar and out of the way. */
+.add-task-button{top:auto!important;right:1.5rem!important;bottom:1.5rem!important;z-index:50!important}
+.task-sidebar{z-index:100!important}
+@media (max-width:639px){.add-task-button{top:auto!important;right:1rem!important;bottom:1rem!important}}
+
+.modal-overlay{z-index:9999!important}
+
+/* Center modal overlays in the exact application viewport, not the sidebar or canvas. */
+.modal-overlay{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;margin:0!important;display:grid!important;align-items:center!important;justify-items:center!important;place-items:center!important}
+.modal-overlay>[role="dialog"]{margin:0!important;max-height:calc(100dvh - 2rem)!important}
+
+/* Prevent dialogs from exceeding the visible viewport, especially on iOS. */
+.modal-overlay>[role="dialog"],.modal-overlay .task-edit-popup{position:relative!important;left:auto!important;top:auto!important;transform:none!important;width:min(36rem,calc(100vw - 2rem))!important;max-width:calc(100vw - 2rem)!important;box-sizing:border-box!important;margin:0 auto!important}
+@media (max-width:639px){.modal-overlay{left:0!important;top:0!important;right:0!important;bottom:0!important;width:100vw!important;height:100dvh!important;padding:1rem!important}.modal-overlay>[role="dialog"],.modal-overlay .task-edit-popup{width:calc(100vw - 2rem)!important;max-width:calc(100vw - 2rem)!important}}
+
+/* Edit modal: size against its overlay, never against the 4K canvas/sidebar. */
+.modal-overlay{justify-content:center!important;align-content:center!important}
+.modal-overlay .task-edit-popup{width:calc(100% - 2rem)!important;max-width:36rem!important;justify-self:center!important;align-self:center!important;margin:auto!important}
+@media (max-width:639px){.modal-overlay .task-edit-popup{width:calc(100% - 2rem)!important;max-width:none!important}}
+
+/* Task details are a centered dialog, not a right-side drawer. */
+.task-sidebar{position:fixed!important;left:50%!important;top:50%!important;right:auto!important;bottom:auto!important;z-index:10000!important;width:36rem!important;height:auto!important;max-height:calc(100dvh - 2rem)!important;transform:translate(-50%,-50%)!important;overflow-y:auto!important;border:2px solid #734828!important;padding:1.5rem!important;box-shadow:0 18px 42px #39211288!important}
+.task-sidebar .sidebar-close{right:.75rem!important;left:auto!important;top:.75rem!important}
+@media (max-width:639px){.task-sidebar{width:calc(100vw - 2rem)!important;max-width:calc(100vw - 2rem)!important;max-height:calc(100dvh - 2rem)!important;padding:1rem!important}}
+
+/* Nested edit/delete dialogs must sit above the task details dialog. */
+.modal-overlay{z-index:20000!important}
+
+.task-detail-heading{display:flex!important;align-items:center!important;width:100%!important;position:relative!important;z-index:5!important}.task-actions-trigger{display:inline-grid!important;visibility:visible!important;opacity:1!important;flex:0 0 44px!important;color:#734828!important;background:#f7e5bf!important;border:2px solid #734828!important;border-radius:6px!important;z-index:10!important}.task-actions-trigger:hover{background:#d9b786!important;color:#3f2a1d!important}
+
+.task-actions-menu{position:fixed!important;z-index:30000!important;display:grid!important;visibility:visible!important;opacity:1!important}
+
+/* While editing, show only the edit dialog instead of stacking it over task details. */
+.task-sidebar-editing{visibility:hidden!important;pointer-events:none!important}
+.task-edit-popup{width:36rem!important;max-width:calc(100vw - 2rem)!important}
+@media (max-width:639px){.task-edit-popup{width:calc(100vw - 2rem)!important;max-width:calc(100vw - 2rem)!important}}
+
+/* Edit dialog matches the create-task dialog and intentionally overlays details. */
+.task-sidebar-editing{visibility:visible!important;pointer-events:auto!important}
+.task-edit-popup{position:relative!important;left:auto!important;top:auto!important;right:auto!important;bottom:auto!important;transform:none!important;width:min(36rem,calc(100vw - 2rem))!important;max-width:calc(100vw - 2rem)!important;margin:0 auto!important}
+@media (max-width:639px){.task-edit-popup{width:calc(100vw - 2rem)!important;max-width:calc(100vw - 2rem)!important}}
+
+.note-card{touch-action:none;cursor:grab}
+.note-card:active{cursor:grabbing}
+
+.task-details-close{color:#734828!important;background:#f7e5bf!important;border:2px solid #734828!important;border-radius:6px!important;flex:0 0 44px!important}.task-details-close:hover{background:#d9b786!important;color:#3f2a1d!important}
+
+.task-id-meta{display:none!important;margin:0!important;padding:0!important;border:0!important}
+.task-description-block{border-top:0!important;padding-top:0!important}
+
+.task-edit-popup{width:min(52rem,calc(100vw - 2rem))!important;max-width:none!important}
+@media (max-width:639px){.task-edit-popup{width:calc(100vw - 2rem)!important;max-width:none!important}}
+
+.edit-modal-overlay{padding:0!important}
+.edit-modal-overlay .task-edit-popup{width:auto!important;max-width:none!important;min-width:0!important;height:auto!important;max-height:none!important;margin:0!important}
+
+/* Match Edit task to Add task and center the color palette. */
+.note-color-picker{justify-content:center!important;padding-left:0!important}
+.edit-modal-overlay .task-edit-popup{width:min(36rem,calc(100vw - 2rem))!important;max-width:calc(100vw - 2rem)!important;max-height:calc(100dvh - 2rem)!important;overflow:hidden!important;padding:1.25rem!important}
+@media (max-width:639px){.edit-modal-overlay .task-edit-popup{width:calc(100vw - 2rem)!important;max-width:calc(100vw - 2rem)!important}}

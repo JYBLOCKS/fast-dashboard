@@ -1,3 +1,3 @@
 import type {TaskStatus} from './config';
 export type AcceptanceCriterion={id:string;text:string;completed:boolean};
-export type Task={task_id:string;name:string;description:string;acceptance_criteria:(AcceptanceCriterion|string)[]|string;status:TaskStatus};
+export type Task={task_id:string;name:string;description:string;acceptance_criteria:(AcceptanceCriterion|string)[]|string;status:TaskStatus;color?:string;position?:{x:number;y:number}};

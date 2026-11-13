@@ -21,40 +21,40 @@ import "./index.css";
 
 const TaskCard = memo(({
   task,
+  position,
   onOpen,
   onDragStart,
   onDragEnd,
+  onPointerStart,
 }: {
   task: Task;
+  position: { x: number; y: number };
   onOpen: (task: Task, element: HTMLElement) => void;
   onDragStart: (taskId: string) => void;
   onDragEnd: () => void;
+  onPointerStart: (taskId: string, x: number, y: number) => void;
 }) => (
   <article
-    draggable
+    draggable={false}
     tabIndex={0}
-    role="button"
-    onDragStart={() => onDragStart(task.task_id)}
+    onDragStart={(event) => { event.dataTransfer.effectAllowed = "move"; onDragStart(task.task_id); }}
     onDragEnd={onDragEnd}
-    onClick={(event) => onOpen(task, event.currentTarget)}
-    onKeyDown={(event) => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        onOpen(task, event.currentTarget);
-      }
-    }}
-    className="task-card min-w-0 cursor-pointer rounded-lg border border-slate-700 bg-slate-900 p-2 outline-none hover:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-300"
+    onPointerDown={(event) => { if ((event.target as HTMLElement).closest("button")) return; onPointerStart(task.task_id, event.clientX, event.clientY); }}
+    className="task-card note-card min-w-0 cursor-pointer rounded-lg border p-3 outline-none hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-blue-300" style={{ position: "absolute", left: position.x, top: position.y, width: 300, backgroundColor: task.color || defaultNoteColor, borderColor: "#00000022", color: "#263238" }}
   >
-    <h3 className="truncate font-medium" title={task.name}>{task.name}</h3>
+    <div className="note-card-heading"><h3 className="font-medium" title={task.name}>{task.name}</h3><button type="button" className="note-menu icon" aria-label={"Opciones de " + task.name} title="Opciones" onClick={(event) => { event.stopPropagation(); onOpen(task, event.currentTarget); }}><MoreVertical size={18} /></button></div>
   </article>
 ));
 
+const noteColors = [{ value: "#fff1a8", label: "Sol" }, { value: "#ffd6a5", label: "Durazno" }, { value: "#ffadad", label: "Coral" }, { value: "#caffbf", label: "Menta" }, { value: "#bde0fe", label: "Cielo" }, { value: "#d9c2ff", label: "Lavanda" }];
+const defaultNoteColor = noteColors[0].value;
 const empty = {
   task_id: "",
   name: "",
   description: "",
   acceptance_criteria: "",
   status: "backlog" as TaskStatus,
+  color: defaultNoteColor,
 };
 const storedWidth = (): number => {
   const value = Number(localStorage.getItem(config.sidebarStorageKey));
@@ -232,6 +232,7 @@ export default function App() {
       task
         ? {
             ...task,
+            color: task.color || defaultNoteColor,
             acceptance_criteria: (Array.isArray(task.acceptance_criteria)
               ? task.acceptance_criteria
               : []
@@ -302,7 +303,9 @@ export default function App() {
           name: form.name,
           description: form.description,
           acceptance_criteria: value.acceptance_criteria,
+          color: form.color || defaultNoteColor,
         });
+        setSelected((current) => current ? { ...current, task_id: form.task_id, name: form.name, description: form.description, color: form.color || defaultNoteColor } : current);
       } else {
         await create(value);
         // Close the creation modal after a successful create.
@@ -404,6 +407,18 @@ export default function App() {
     })),
     [boards, tasks],
   );
+  const wallRef = useRef<HTMLDivElement | null>(null);
+  const freeTasks = useMemo(() => tasks.map((task, index) => ({ task, position: task.position || { x: 80 + (index % 6) * 560, y: 100 + Math.floor(index / 6) * 300 } })), [tasks]);
+  const pointerGestureRef = useRef<{ taskId: string; startX: number; startY: number; active: boolean } | null>(null);
+  const pointerPositionRef = useRef<{ taskId: string; position: { x: number; y: number } } | null>(null);
+  const [pointerPosition, setPointerPosition] = useState<{ taskId: string; position: { x: number; y: number } } | null>(null);
+  const handlePointerStart = useCallback((taskId: string, clientX: number, clientY: number) => { pointerGestureRef.current = { taskId, startX: clientX, startY: clientY, active: false }; }, []);
+  useEffect(() => {
+    const move = (event: PointerEvent) => { const gesture = pointerGestureRef.current; const canvas = wallRef.current; const rect = canvas?.getBoundingClientRect(); if (!gesture || !canvas || !rect) return; const distance = Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY); if (!gesture.active && distance < 10) return; gesture.active = true; event.preventDefault(); setDrag(gesture.taskId); const scroller = canvas.parentElement; const next = { taskId: gesture.taskId, position: { x: Math.max(24, Math.min(3516, event.clientX - rect.left + (scroller?.scrollLeft || 0) - 150)), y: Math.max(40, Math.min(2040, event.clientY - rect.top + (scroller?.scrollTop || 0) - 30)) } }; pointerPositionRef.current = next; setPointerPosition(next); };
+    const up = async () => { const gesture = pointerGestureRef.current; pointerGestureRef.current = null; const next = pointerPositionRef.current; pointerPositionRef.current = null; setPointerPosition(null); setDrag(null); if (gesture?.active && next) await useTaskStore.getState().update(next.taskId, { position: next.position }); };
+    window.addEventListener("pointermove", move, { passive: false }); window.addEventListener("pointerup", up); window.addEventListener("pointercancel", up); return () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); window.removeEventListener("pointercancel", up); };
+  }, []);
+  const placeTask = async (event: React.DragEvent<HTMLDivElement>) => { if (!drag || !wallRef.current) return; const rect = wallRef.current.getBoundingClientRect(); const x = Math.max(24, Math.min(3516, event.clientX - rect.left + (wallRef.current.parentElement?.scrollLeft || 0) - 150)); const y = Math.max(40, Math.min(2040, event.clientY - rect.top + (wallRef.current.parentElement?.scrollTop || 0) - 30)); await update(drag, { position: { x, y } }); setDrag(null); };
   const openTask = useCallback((task: Task, element: HTMLElement) => {
     triggerRef.current = element;
     setSidebarOpen(true);
@@ -464,29 +479,11 @@ export default function App() {
   };
   return (
     <main className="mx-auto flex h-[100dvh] max-w-[1600px] flex-col overflow-hidden p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-5 md:p-10">
-      <header className="mb-6 flex flex-wrap items-start justify-between gap-3 sm:items-end">
-        <div className="min-w-0">
-          <p className="mb-1 text-xs font-bold uppercase tracking-[.12em] text-blue-300">
-            Workspace / Operations
-          </p>
-          <h1 className="break-words text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">
-            {config.appName}
-          </h1>
-        </div>
-        <button
-          className="icon shrink-0"
-          aria-label="Refresh"
-          title="Refresh"
-          disabled={loading}
-          onClick={refresh}
-        >
-          <RefreshCw size={22} />
-        </button>
-      </header>
+      {!drag && <header className="fixed right-6 top-6 z-30"><button className="icon add-task-button" aria-label="Agregar tarea" title="Agregar tarea" onClick={(event) => open(undefined, "backlog", event.currentTarget)}><Plus size={24} /></button></header>}
       {(error || notice) && (
         <p
           role="status"
-          className={`mb-4 break-words text-sm ${error ? "text-red-300" : "text-green-300"}`}
+          className={error ? "toast-notification error" : "toast-notification success"}
         >
           {error || notice}
         </p>
@@ -496,124 +493,10 @@ export default function App() {
           Loading tasks…
         </div>
       ) : (
-        <section
-          aria-label="Tablero de tareas"
-          className="dashboard-grid min-h-0 flex-1 items-stretch gap-3 pb-0 sm:gap-4"
-        >
-          {boardColumns.map(({ board: col, tasks: columnTasks }) => {
-            return (
-              <div
-                key={col.value}
-                className="board-column min-h-0 min-w-0 scroll-mx-4 snap-start rounded-xl border border-slate-700 bg-slate-950/60 p-2"
-                style={{ borderTop: `3px solid ${col.accent}` }}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={() => {
-                  if (drag) void moveTask(drag, col.value);
-                }}
-              >
-                <div className="mb-3 flex items-center gap-2">
-                  <h2
-                    className="min-w-0 flex-1 truncate text-sm font-bold uppercase tracking-wider"
-                    style={{ color: col.accent }}
-                  >
-                    {col.label}
-                  </h2>
-                  <span
-                    className="shrink-0 rounded-full px-2 py-1 text-xs"
-                    style={{ background: `${col.accent}22`, color: col.accent }}
-                  >
-                    {columnTasks.length}
-                  </span>
-                  <div className="board-header-actions ml-auto flex shrink-0 items-center gap-0">
-                    <button
-                      className="icon"
-                      aria-label={"Add to " + col.label}
-                      title={"Add to " + col.label}
-                      onClick={(event) =>
-                        open(undefined, col.value, event.currentTarget)
-                      }
-                    >
-                      <Plus size={18} />
-                    </button>
-                    <div className="relative shrink-0">
-                    <button
-                      className="icon"
-                      aria-label={`Opciones de ${col.label}`}
-                      title="Board options"
-                      aria-haspopup="menu"
-                      aria-expanded={boardMenu === col.value}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setBoardMenu(
-                          boardMenu === col.value ? null : col.value,
-                        );
-                      }}
-                    >
-                      <MoreVertical size={18} />
-                    </button>
-                    {boardMenu === col.value && (
-                      <div
-                        role="menu"
-                        className="absolute right-0 top-full z-10 mt-1 grid min-w-36 gap-1 rounded-lg border border-slate-700 bg-slate-900 p-1 shadow-xl"
-                      >
-                        <button
-                          role="menuitem"
-                          className="flex items-center gap-2 rounded px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-800"
-                          onClick={() => {
-                            setBoardMenu(null);
-                            openBoardDialog(col);
-                          }}
-                        >
-                          <Edit3 size={15} />
-                          Edit
-                        </button>
-                        <button
-                          role="menuitem"
-                          className="flex items-center gap-2 rounded px-3 py-2 text-left text-sm text-red-300 hover:bg-slate-800"
-                          onClick={() => {
-                            setBoardMenu(null);
-                            setBoardToDelete(col);
-                          }}
-                        >
-                          <Trash2 size={15} />
-                          Delete
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                    </div>
-                  </div>
-                <div className="board-column-content grid min-h-0 content-start gap-2">
-                  {columnTasks.map((task) => (
-                    <TaskCard
-                      key={task.task_id}
-                      task={task}
-                      onOpen={openTask}
-                      onDragStart={startTaskDrag}
-                      onDragEnd={endTaskDrag}
-                    />
-                  ))}
-                  {!columnTasks.length && (
-                    <p className="py-3 text-center text-sm text-slate-500">
-                      No tasks
-                    </p>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-          <button
-            className="icon add-board-button shrink-0 self-start"
-            aria-label="Add board"
-            title="Add board"
-            onClick={() => openBoardDialog()}
-          >
-            <Plus size={22} />
-          </button>
-        </section>
+        <section aria-label="Pizarra de tareas" className="wall-viewport min-h-0 flex-1"><div ref={wallRef} className="wall-canvas" onDragOver={(event) => event.preventDefault()} onDrop={(event) => void placeTask(event)}>{freeTasks.map(({ task, position }) => <TaskCard key={task.task_id} task={task} position={pointerPosition?.taskId === task.task_id ? pointerPosition.position : position} onOpen={openTask} onDragStart={startTaskDrag} onDragEnd={endTaskDrag} onPointerStart={handlePointerStart} />)}</div></section>
       )}
       {boardToDelete && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setBoardToDelete(null); }}>
+        <div className="modal-overlay fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setBoardToDelete(null); }}>
           <div role="dialog" aria-modal="true" aria-labelledby="board-delete-title" className="w-[min(28rem,calc(100vw-2rem))] rounded-xl border border-slate-600 bg-slate-900 p-5 shadow-2xl">
             <div className="grid gap-4">
               <h2 id="board-delete-title" className="text-lg font-bold">Delete board</h2>
@@ -624,7 +507,7 @@ export default function App() {
         </div>
       )}
       {taskToDelete && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setTaskToDelete(null); }}>
+        <div className="modal-overlay fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setTaskToDelete(null); }}>
           <div role="dialog" aria-modal="true" aria-labelledby="task-delete-title" className="w-[min(28rem,calc(100vw-2rem))] rounded-xl border border-slate-600 bg-slate-900 p-5 shadow-2xl">
             <div className="grid gap-4">
               <h2 id="task-delete-title" className="text-lg font-bold">Delete task</h2>
@@ -635,7 +518,7 @@ export default function App() {
         </div>
       )}
       {boardDialog && (
-        <div className="fixed inset-0 z-40 grid place-items-center bg-black/60 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setBoardDialog(null); }}>
+        <div className="modal-overlay fixed inset-0 z-40 grid place-items-center bg-black/60 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setBoardDialog(null); }}>
           <div role="dialog" aria-modal="true" aria-labelledby="board-popup-title" className="w-[min(28rem,calc(100vw-2rem))] rounded-xl border border-slate-600 bg-slate-900 p-5 shadow-2xl">
             <form onSubmit={saveBoard} className="grid gap-4">
               <div className="flex items-center justify-between gap-3">
@@ -662,14 +545,14 @@ export default function App() {
         </div>
       )}
       {taskDialog && (
-        <div className="fixed inset-0 z-30 grid place-items-center bg-black/60 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) closeTaskForm(); }}>
+        <div className="modal-overlay fixed inset-0 z-30 grid place-items-center bg-black/60 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) closeTaskForm(); }}>
           <div role="dialog" aria-modal="true" aria-labelledby="task-create-title" className="flex max-h-[calc(100dvh-2rem)] w-[min(36rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border border-slate-600 bg-slate-900 p-5 shadow-2xl">
             <form id="task-create-form" onSubmit={save} className="grid min-h-0 gap-4 overflow-y-auto overscroll-contain pr-1">
               <div className="flex items-center justify-between gap-3">
                 <h2 id="task-create-title" className="text-lg font-bold">Add task</h2>
                 <button type="button" className="icon" aria-label="Close" title="Close" onClick={closeTaskForm}><X size={18} /></button>
               </div>
-              <label className="grid gap-1 text-sm text-slate-300">
+              <label className="task-id-field grid gap-1 text-sm text-slate-300">
                 Task ID
                 <div className="flex items-center gap-2 rounded border border-slate-700 bg-slate-950 p-2 text-slate-300"><span className="font-mono">{form.task_id}</span><span className="ml-auto text-xs text-slate-500">Generated automatically</span></div>
               </label>
@@ -677,11 +560,12 @@ export default function App() {
                 Name
                 <input required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} className="w-full rounded border border-slate-700 bg-slate-950 p-2" />
               </label>
+              <fieldset className="grid gap-2 text-sm text-slate-300"><legend>Note color</legend><div className="note-color-picker" role="radiogroup" aria-label="Note color">{noteColors.map((noteColor) => <button key={noteColor.value} type="button" className="note-color-swatch" style={{ backgroundColor: noteColor.value }} aria-label={noteColor.label} aria-pressed={form.color === noteColor.value} onClick={() => { setForm({ ...form, color: noteColor.value }); setSelected((current) => current ? { ...current, color: noteColor.value } : current); }} />)}</div></fieldset>
               <label className="grid gap-1 text-sm text-slate-300">
                 Description
                 <textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} rows={4} className="w-full resize-y rounded border border-slate-700 bg-slate-950 p-2" />
               </label>
-              <div className="grid gap-2 text-sm text-slate-300">
+              <div className="status-field grid gap-2 text-sm text-slate-300">
                 <span>Initial status</span>
                 <div className="flex items-center gap-2 rounded border px-3 py-2" style={{ color: boards.find((board) => board.value === form.status)?.accent, borderColor: boards.find((board) => board.value === form.status)?.accent, backgroundColor: `${boards.find((board) => board.value === form.status)?.accent}18` }}>
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: boards.find((board) => board.value === form.status)?.accent }} />
@@ -689,7 +573,7 @@ export default function App() {
                   <span className="ml-auto text-xs text-slate-400">Tasks will be added here</span>
                 </div>
               </div>
-              <div className="grid gap-2 text-sm text-slate-300">
+              <div className="criteria-section grid gap-2 text-sm text-slate-300">
                 <span>Acceptance criteria</span>
                 <span className="text-xs text-slate-500">Each criterion can be added and edited separately.</span>
                 <div className="flex gap-2">
@@ -720,19 +604,11 @@ export default function App() {
             aria-modal="true"
             aria-label={editing ? "Edit task" : "Task details"}
             className={taskDialog ? "contents" : "task-sidebar fixed right-0 top-0 z-20 flex h-[100dvh] max-h-[100dvh] max-w-full flex-col overflow-y-auto border-l border-slate-600 bg-slate-900 p-4 shadow-2xl sm:p-6"}
-            style={taskDialog ? undefined : { width: `${Math.min(width, innerWidth)}px` }}
+            style={taskDialog ? undefined : ({ width: Math.min(width, innerWidth), "--task-sidebar-color": selected?.color || selectedTask?.color || defaultNoteColor } as React.CSSProperties)}
           >
-            {!taskDialog && <div className="mb-4 flex shrink-0 justify-end pb-2"><button
-              ref={closeRef}
-              className="sidebar-close icon"
-              onClick={close}
-              aria-label="Close"
-              title="Close"
-            >
-              <X />
-            </button></div>}
+
             {(criterionEditing || criterionDeleting || criterionViewing) && (
-              <div className="fixed inset-0 z-40 grid place-items-center bg-black/60 p-4">
+              <div className="modal-overlay fixed inset-0 z-40 grid place-items-center bg-black/60 p-4">
                 <div role="dialog" aria-modal="true" aria-labelledby="criterion-popup-title" className="w-[min(28rem,calc(100vw-2rem))] rounded-xl border border-slate-600 bg-slate-900 p-5 shadow-2xl">
                   {criterionViewing ? (
                     <div className="grid gap-4">
@@ -754,8 +630,8 @@ export default function App() {
               </div>
             )}
             {selected && (
-              <div className="mb-6 flex items-center justify-between gap-3 border-b border-slate-700 pb-3 pt-10 text-xs text-slate-400">
-                <div className="min-w-0 truncate">
+              <div className="task-id-meta mb-6 flex items-center justify-between gap-3 border-b border-slate-700 pb-3 pt-10 text-xs text-slate-400">
+                <div className="task-id-value min-w-0 truncate">
                   <span className="font-semibold uppercase tracking-wide text-blue-300">
                     ID
                   </span>
@@ -777,10 +653,24 @@ export default function App() {
                   >
                     {boards.map((s) => <option key={s.value} value={s.value} style={{ color: s.accent, backgroundColor: "#0f172a" }}>{s.label}</option>)}
                   </select>
+
+                </div>
+              </div>
+            )}
+            <div className="mb-4 flex items-start justify-between gap-3">
+              {selected && (
+                <div className="min-w-0 flex-1">
+                  <div className="task-detail-heading flex min-w-0 items-center gap-3">
+                    <h2
+                      className="min-w-0 flex-1 truncate text-2xl font-bold"
+                      title={selectedTask?.name}
+                    >
+                      {selectedTask?.name}
+                    </h2>
                   <div className="relative shrink-0">
                     <button
                       type="button"
-                      className="icon"
+                      className="task-actions-trigger icon"
                       onClick={(event) => { event.stopPropagation(); const rect = event.currentTarget.getBoundingClientRect(); setActionsAnchor({ top: rect.bottom + 4, left: Math.max(8, rect.right - 160) }); setActionsOpen((value) => !value); }}
                       aria-label="Menu"
                       title="Task actions"
@@ -796,31 +686,20 @@ export default function App() {
                       </div>, document.body,
                     )}
                   </div>
-                </div>
-              </div>
-            )}
-            <div className="mb-4 flex items-start justify-between gap-3">
-              {selected && (
-                <div className="min-w-0 flex-1">
-                  <div className="task-detail-heading flex min-w-0 items-center gap-3">
-                    <h2
-                      className="min-w-0 flex-1 truncate text-2xl font-bold"
-                      title={selectedTask?.name}
-                    >
-                      {selectedTask?.name}
-                    </h2>
+                  <button ref={closeRef} type="button" className="task-details-close icon" onClick={close} aria-label="Close" title="Close"><X /></button>
                   </div>
                 </div>
               )}
             </div>
-            {editing && (
-              <div className="task-edit-popup fixed left-1/2 top-1/2 z-30 flex max-h-[calc(100dvh-2rem)] w-[min(36rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-slate-600 bg-slate-900 p-4 shadow-2xl sm:p-5">
+            {editing && createPortal(
+              <div className="modal-overlay edit-modal-overlay">
+                <div role="dialog" aria-modal="true" className="task-edit-popup flex max-h-[calc(100dvh-2rem)] w-[min(36rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border border-slate-600 bg-slate-900 p-5 shadow-2xl">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <h2 className="text-lg font-bold">Edit task</h2>
                 <button type="button" className="icon inline-grid place-items-center justify-center leading-none" aria-label="Cancel editing" title="Cancel editing" onClick={() => setEditing(null)}><X size={18} /></button>
               </div>
               <form id="task-edit-form" onSubmit={save} className="grid min-h-0 min-w-0 gap-4 overflow-y-auto overscroll-contain pr-1">
-                <label className="grid min-w-0 gap-1 text-sm text-slate-300">
+                <label className="task-id-field grid min-w-0 gap-1 text-sm text-slate-300">
                   <span className="sr-only">Task ID</span>
                   <input
                     aria-label="Task ID"
@@ -842,6 +721,7 @@ export default function App() {
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                   />
                 </label>
+                <fieldset className="grid gap-2 text-sm text-slate-300"><legend>Note color</legend><div className="note-color-picker" role="radiogroup" aria-label="Note color">{noteColors.map((noteColor) => <button key={noteColor.value} type="button" className="note-color-swatch" style={{ backgroundColor: noteColor.value }} aria-label={noteColor.label} aria-pressed={form.color === noteColor.value} onClick={() => { setForm({ ...form, color: noteColor.value }); setSelected((current) => current ? { ...current, color: noteColor.value } : current); }} />)}</div></fieldset>
                 <label className="grid min-w-0 gap-1 text-sm text-slate-300">
                   Description
                   <textarea
@@ -857,11 +737,12 @@ export default function App() {
                 <button type="button" className="rounded border border-red-400 px-4 py-2 font-medium text-red-300 hover:bg-red-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-300" aria-label="Cancel editing" onClick={() => setEditing(null)}>Cancel</button>
                 <button type="submit" form="task-edit-form" className="rounded bg-green-600 px-4 py-2 font-medium text-white hover:bg-green-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-300" aria-label="Save">Save</button>
               </div>
-              </div>
+                </div>
+              </div>, document.body,
             )}
             {selected && (
               <div className="grid min-w-0 gap-5">
-                <div className="min-w-0 border-t border-slate-700 pt-3">
+                <div className="task-description-block min-w-0 border-t border-slate-700 pt-3">
                   <strong className="text-xs uppercase text-blue-300">
                     Description
                   </strong>
@@ -870,7 +751,7 @@ export default function App() {
                   </p>
                 </div>
                 <section
-                  className="min-w-0 border-t border-slate-700 pt-3"
+                  className="criteria-section min-w-0 border-t border-slate-700 pt-3"
                   aria-labelledby="criteria-heading"
                 >
                   <div className="mb-2 flex items-center justify-between gap-2">

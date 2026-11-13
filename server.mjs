@@ -42,6 +42,7 @@ const server = createServer(async (request, response) => {
     response.setHeader("access-control-allow-headers", "content-type");
     if (request.method === "OPTIONS") return response.end();
     const url = new URL(request.url, "http://localhost");
+    if (request.method === "GET" && url.pathname === "/healthz") return json(response, 200, { status: "ok" });
     const match = url.pathname.match(/^\/api\/data\/([^/]+)$/);
     if (match) {
       const filename = decodeURIComponent(match[1]);
