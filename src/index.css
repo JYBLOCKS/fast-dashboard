@@ -177,3 +177,6 @@ main:before{z-index:100;border-width:18px;pointer-events:none}
 main:before{border-width:14px}
 
 .note-card{border-width:1px!important}
+
+.note-card-heading{align-items:center!important}
+.note-card-heading h3{line-height:1.2!important}
